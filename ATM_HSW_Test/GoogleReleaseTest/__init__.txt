@@ -1,0 +1,2 @@
+*** Settings ***
+Documentation     Currently always monitor FW crash for all the test!

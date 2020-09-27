@@ -1,0 +1,40 @@
+*** Settings ***
+Suite Setup       DefaultSuiteSetup
+Test Setup        Default Test Setup
+Resource          ../host_software_resources.tsv
+
+*** Variables ***
+${RebootCount}    30
+${FW_VER}         0.8.18.3
+
+*** Test Cases ***
+RebootStress
+    [Documentation]    Reboot and wait a while for FW settledown and check if FW was downloaded
+    [Tags]    SANITY
+    ${ret}=    set variable    0
+    ${result}=    set variable    0
+    : FOR    ${count}    IN RANGE    ${RebootCount}
+    \    Run Keyword And Continue On Failure    rebootDevice    ${count}
+    \    sleep    25
+    \    ${ret}=    CheckFWCrash    ${count}
+    \    ${result}=    set variable if    ${ret}==1    1    ${result}
+    \    Run Keyword if    ${ret}==1    Collect All debug info    ${count}
+    run keyword if    ${result}==1    fail    FW crash happened
+
+*** Keywords ***
+CheckFWCrash
+    [Arguments]    ${iteration_num}=0
+    [Documentation]    If FW crash happened and failed to recover, we'll not be able to get fw_version from sys fs.
+    ${fw_crash}=    set variable    0
+    Comment    ${kernel_log}=    hostApi.runShell    dmesg
+    ${kernel_log}=    hostApi.runShell    cat /sys/bus/spi/devices/spi32766.0/iaxxx/fw_version
+    ${kernel_log}=    set variable    ${kernel_log.rstrip()}
+    ${fw_crash_str}=    set variable if    """${FW_VER}""" != """${kernel_log}"""    FW crash during bootup in iteration ${iteration_num}!    Bootup Success in iteration ${iteration_num}!
+    Log    ${fw_crash_str}    WARN
+    Append To File    ${RESULTS_INFO_FILE}    \n${fw_crash_str}
+    Comment    run keyword if    """${FW_VER}""" != """${kernel_log}"""    log    FW crash during bootup in iteration ${iteration_num}!    WARN    ELSE
+    ...    log    Bootup Success in iteration ${iteration_num}!    WARN
+    ${fw_crash}=    set variable if    """${FW_VER}""" != """${kernel_log}"""    1    ${fw_crash}
+    log    ${kernel_log}
+    Comment    run keyword if    """${FW_VER}""" != """${kernel_log}"""    fail
+    [Return]    ${fw_crash}

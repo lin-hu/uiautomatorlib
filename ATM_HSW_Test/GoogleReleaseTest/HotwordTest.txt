@@ -1,0 +1,207 @@
+*** Settings ***
+Suite Setup       Suite Setup For HotwordTest
+Test Setup        Default Test Setup    # Default Test Setup
+Test Teardown     default_test_teardown
+Resource          GoogleTestResource.tsv
+
+*** Variables ***
+${hotword_stress_iteration}    20
+${command_wav}    C:\\workspace\\linhu\\athleticomobile\\cmd_wake_me_up.wav
+
+*** Test Cases ***
+hotword_enable
+    hotword_enable    ${true}
+    Comment    hotword_enable    ${false}
+    Comment    hotword_enable    ${false}
+    Comment    hotword_enable    ${true}
+
+hotword_detect
+    [Tags]    SANITY
+    Comment    hotword_enable    ${true}
+    hotword_detect
+
+hotword_detect_stress
+    ${failed_runs}=    Create List
+    ${retStatus}=    Set Variable    ${True}
+    : FOR    ${count}    IN RANGE    ${hotword_stress_iteration}
+    \    log    test run ${count} !    WARN
+    \    ${status}=    hotword_detect    ${True}
+    \    Run Keyword if    ${status}==${False}    Collect All debug info    ${count}
+    \    Comment    Run Keyword if    ${status}==${False}    Append To List    ${failed_runs}    ${count}
+    \    ${retStatus}=    Set Variable if    ${status}==${False}    ${False}    ${retStatus}
+    \    sleep    10s
+    \    Run Keyword if    ${retStatus}==${False}    Fail    Hotword Stress Failed    #Hotword Stress Failed in runs ${failed_runs}
+
+CHRE_hotword
+    run shell    input keyevent 3    #home
+    Start App    ${SoundTriggerApp}
+    model_start    ${ModelChre}
+    Comment    run shell    logcat -c
+    Comment    Play Record    ${HotWordWav}    ${None}    2    1    0
+    ...    ${True}    ${16000}
+    Comment    #check hotword detection
+    Comment    ${hotword_ret}=    run shell    logcat -d
+    Comment    log    ${hotword_ret}
+    Comment    should be true    """${hotword_detected_str}""" in """${hotword_ret}"""
+    hotword_detect
+    Start App    ${SoundTriggerApp}
+    model_stop    ${ModelChre}
+    Stop App    ${SoundTriggerApp}
+
+Ambient_hotword
+    run shell    input keyevent 3    #home
+    Start App    ${SoundTriggerApp}
+    model_start    ${ModelAmbient}
+    Comment    run shell    logcat -c
+    Comment    Play Record    ${HotWordWav}    ${None}    2    1    0
+    ...    ${True}    ${16000}
+    Comment    #check hotword detection
+    Comment    ${hotword_ret}=    run shell    logcat -d
+    Comment    log    ${hotword_ret}
+    Comment    should be true    """${hotword_detected_str}""" in """${hotword_ret}"""
+    hotword_detect
+    Start App    ${SoundTriggerApp}
+    model_stop    ${ModelAmbient}
+    Stop App    ${SoundTriggerApp}
+
+Sensor_hotword
+    run shell    input keyevent 3    #home
+    Start App    ${SoundTriggerApp}
+    model_start    ${ModelSensor}
+    Comment    run shell    logcat -c
+    Comment    Play Record    ${HotWordWav}    ${None}    2    1    0
+    ...    ${True}    ${16000}
+    Comment    #check hotword detection
+    Comment    ${hotword_ret}=    run shell    logcat -d
+    Comment    log    ${hotword_ret}
+    Comment    should be true    """${hotword_detected_str}""" in """${hotword_ret}"""
+    hotword_detect
+    Start App    ${SoundTriggerApp}
+    model_stop    ${ModelSensor}
+    Stop App    ${SoundTriggerApp}
+
+Entity_hotword
+    run shell    input keyevent 3    #home
+    Start App    ${SoundTriggerApp}
+    model_start    ${ModelEntity}
+    Comment    run shell    logcat -c
+    Comment    Play Record    ${HotWordWav}    ${None}    2    1    0
+    ...    ${True}    ${16000}
+    Comment    #check hotword detection
+    Comment    ${hotword_ret}=    run shell    logcat -d
+    Comment    log    ${hotword_ret}
+    Comment    should be true    """${hotword_detected_str}""" in """${hotword_ret}"""
+    hotword_detect
+    Start App    ${SoundTriggerApp}
+    model_stop    ${ModelEntity}
+    Stop App    ${SoundTriggerApp}
+
+hotword_cmd_stress
+    [Documentation]    To test Barge-in!
+    ${result_count}=    Set Variable    ${0}
+    hotword_enable    ${true}
+    : FOR    ${count}    IN RANGE    ${hotword_stress_iteration}
+    \    run shell    logcat -c
+    \    Play Record    ${HotWordWav}    ${None}    2    1    0
+    \    ...    ${True}    ${16000}
+    \    ${hotword_ret}=    run shell    logcat -d
+    \    Run Keyword And Continue On Failure    should be true    """${hotword_detected_str}""" in """${hotword_ret}"""
+    \    ${result_count}=    Set Variable if    """${hotword_detected_str}""" in """${hotword_ret}"""    ${result_count+${1}}    ${result_count}
+    \    ${result_str}=    Set Variable if    """${hotword_detected_str}""" in """${hotword_ret}"""    test run ${count} ! KW detected!    test run ${count} ! Failed to detect KW!!
+    \    Comment    run keyword if    """${hotword_detected_str}""" in """${hotword_ret}"""    log    KW detected!    ELSE
+    \    ...    log    Failed to detect KW!!    WARN
+    \    log    ${result_str}    WARN
+    \    Append To File    ${RESULTS_INFO_FILE}    \n${result_str}
+    \    Play Record    ${command_wav}    ${None}    2    1    0
+    \    ...    ${True}    ${16000}
+    \    sleep    15s
+    \    run shell    input keyevent 3    #home
+    Append To File    ${RESULTS_INFO_FILE}    \n\n Total KW detection: ${result_count} out of ${hotword_stress_iteration}
+    Run Keyword if    ${result_count}<${hotword_stress_iteration}    Fail    Failed ${Test Name}, total KW detection: ${result_count} out of ${hotword_stress_iteration}
+
+chre_ambient_hotword_cmd_stress
+    [Documentation]    hotword detection stress test with CHRE/Ambient enabled
+    ${result_count}=    Set Variable    ${0}
+    Start App    ${SoundTriggerApp}
+    model_start    ${ModelAmbient}
+    model_start    ${ModelChre}
+    model_start    ${ModelEntity}
+    : FOR    ${count}    IN RANGE    ${hotword_stress_iteration}
+    \    run shell    logcat -c
+    \    Play Record    ${HotWordWav}    ${None}    2    1    0
+    \    ...    ${True}    ${16000}
+    \    ${hotword_ret}=    run shell    logcat -d
+    \    Run Keyword And Continue On Failure    should be true    """${hotword_detected_str}""" in """${hotword_ret}"""
+    \    ${result_count}=    Set Variable if    """${hotword_detected_str}""" in """${hotword_ret}"""    ${result_count+${1}}    ${result_count}
+    \    ${result_str}=    Set Variable if    """${hotword_detected_str}""" in """${hotword_ret}"""    test run ${count} ! KW detected!    test run ${count} ! Failed to detect KW!!
+    \    Comment    run keyword if    """${hotword_detected_str}""" in """${hotword_ret}"""    log    KW detected!    ELSE
+    \    ...    log    Failed to detect KW!!    WARN
+    \    log    ${result_str}    WARN
+    \    Append To File    ${RESULTS_INFO_FILE}    \n${result_str}
+    \    Play Record    ${command_wav}    ${None}    2    1    0
+    \    ...    ${True}    ${16000}
+    \    sleep    15s
+    \    run shell    input keyevent 3    #home
+    Append To File    ${RESULTS_INFO_FILE}    \n\n Total KW detection: ${result_count} out of ${hotword_stress_iteration}
+    Start App    ${SoundTriggerApp}
+    model_stop    ${ModelEntity}
+    model_stop    ${ModelAmbient}
+    model_stop    ${ModelChre}
+    Stop App    ${SoundTriggerApp}
+    Run Keyword if    ${result_count}<${hotword_stress_iteration}    Fail    Failed ${Test Name}, total KW detection: ${result_count} out of ${hotword_stress_iteration}
+
+Ambient_hotword_fail
+    Comment    rebootDevice
+    Comment    run shell    echo 1 > /sys/bus/spi/devices/spi32766.0/iaxxx/fwcrash_handling_disable    #LHDEBUG: once enable this one, can not reproduce the issue
+    run shell    input keyevent 3    #home
+    Start App    ${SoundTriggerApp}
+    model_start    ${ModelAmbient}
+    hotword_detect
+    Start App    ${SoundTriggerApp}
+    model_stop    ${ModelAmbient}
+
+HSW9.7_hotword_disable_CHRE_start
+    [Documentation]    For HSW9.7: FW crash happens when hotword disabled and start CHRE!
+    hotword_enable    ${true}
+    hotword_enable    ${false}
+    Start App    ${SoundTriggerApp}
+    model_start    ${ModelChre}
+    sleep    2s
+    model_stop    ${ModelChre}
+    Stop App    ${SoundTriggerApp}
+
+HSW9.7_hotword_disable_ambient_start
+    [Documentation]    For HSW9.7: FW crash happens when hotword disabled and start CHRE!
+    hotword_enable    ${true}
+    hotword_enable    ${false}
+    Start App    ${SoundTriggerApp}
+    model_start    ${ModelAmbient}
+    sleep    2s
+    model_stop    ${ModelAmbient}
+    Stop App    ${SoundTriggerApp}
+
+HSW9.7_hotword_disable_sensor_start
+    [Documentation]    For HSW9.7: FW crash happens when hotword disabled and start CHRE!
+    hotword_enable    ${true}
+    hotword_enable    ${false}
+    Start App    ${SoundTriggerApp}
+    model_start    ${ModelSensor}
+    sleep    2s
+    model_stop    ${ModelSensor}
+    Stop App    ${SoundTriggerApp}
+
+HSW9.7_hotword_disable_entity_start
+    [Documentation]    For HSW9.7: FW crash happens when hotword disabled and start CHRE!
+    hotword_enable    ${true}
+    hotword_enable    ${false}
+    Start App    ${SoundTriggerApp}
+    model_start    ${ModelEntity}
+    sleep    2s
+    model_stop    ${ModelEntity}
+    Stop App    ${SoundTriggerApp}
+
+*** Keywords ***
+Suite Setup For HotwordTest
+    Default Suite Setup
+    Comment    Force Unload All Models
+    Comment    hotword_enable    ${true}

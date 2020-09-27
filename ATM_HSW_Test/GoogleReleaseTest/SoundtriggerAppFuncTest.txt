@@ -1,0 +1,83 @@
+*** Settings ***
+Suite Setup       DefaultSuiteSetup
+Test Setup        Default Test Setup
+Test Teardown     default_test_teardown
+Resource          GoogleTestResource.tsv
+
+*** Variables ***
+${AmbientDetectedStr}    AmbientAudio onDetected
+${AmbientDuration}    60000    # 30s
+${stress_num}     10
+
+*** Test Cases ***
+AmbientDetect
+    [Documentation]    Start AmbientAudio
+    ...    Play sample music from Google
+    ...    Check if it's detected
+    Start App    ${SoundTriggerApp}
+    model_start    ${ModelAmbient}
+    sleep    5s
+    run shell    logcat -c
+    Play Record    ${sample_music}    ${None}    2    1    ${AmbientDuration}    ${True}
+    ...    ${16000}
+    Comment    CheckUiStr    ${AmbientDetectedStr}    #LHDEBUG: uiautomator failure
+    ${detected}=    search_str_logcat    ${AmbientDetectedStr}
+    Comment    should be true    ${detected}
+    model_stop    ${ModelAmbient}
+    Stop App    ${SoundTriggerApp}
+    Run Keyword if    ${detected}==${False}    Fail    Ambient Detect Failed
+
+Ambient_stress
+    [Documentation]    Start AmbientAudio
+    ...    Play sample music from Google
+    ...    Check if it's detected
+    ${total_detect}=    set variable    ${0}
+    : FOR    ${count}    IN RANGE    ${stress_num}
+    \    Start App    ${SoundTriggerApp}
+    \    model_start    ${ModelAmbient}
+    \    sleep    2s
+    \    run shell    logcat -c
+    \    Play Record    ${sample_music}    ${None}    2    1    ${AmbientDuration}
+    \    ...    ${True}    ${16000}
+    \    Comment    CheckUiStr    ${AmbientDetectedStr}    #LHDEBUG: uiautomator failure
+    \    ${detected}=    search_str_logcat    ${AmbientDetectedStr}
+    \    Comment    should be true    ${detected}
+    \    ${total_detect}=    run keyword if    ${detected}    evaluate    ${total_detect} + ${1}
+    \    log    detect, total: ${total_detect}, ${count}
+    \    model_stop    ${ModelAmbient}
+    \    Stop App    ${SoundTriggerApp}
+    log    Detected: ${total_detect} / Total: ${stress_num}    WARN
+    Comment    Run Keyword if    ${detected}==${False}    Fail    Ambient Detect Failed
+
+Ambient_repeat_music
+    [Documentation]    Start AmbientAudio
+    ...    Play sample music from Google
+    ...    Check if it's detected
+    ${total_detect}=    set variable    ${0}
+    Start App    ${SoundTriggerApp}
+    model_start    ${ModelAmbient}
+    sleep    2s
+    : FOR    ${count}    IN RANGE    ${stress_num}
+    \    run shell    logcat -c
+    \    Play Record    ${sample_music}    ${None}    2    1    ${AmbientDuration}
+    \    ...    ${True}    ${16000}
+    \    Comment    CheckUiStr    ${AmbientDetectedStr}    #LHDEBUG: uiautomator failure
+    \    ${detected}=    search_str_logcat    ${AmbientDetectedStr}
+    \    Comment    should be true    ${detected}
+    \    ${total_detect}=    run keyword if    ${detected}    evaluate    ${total_detect} + ${1}
+    \    log    detect, total: ${total_detect}, ${count}
+    model_stop    ${ModelAmbient}
+    Stop App    ${SoundTriggerApp}
+    log    Detected: ${total_detect} / Total: ${stress_num}    WARN
+    Comment    Run Keyword if    ${detected}==${False}    Fail    Ambient Detect Failed
+
+*** Keywords ***
+search_str_logcat
+    [Arguments]    ${search_str}
+    [Documentation]    Search for specific string in logcat and return
+    ...    Better run "logcat -c" before staring test
+    Comment    CheckUiStr    ${AmbientDetectedStr}    #LHDEBUG: uiautomator failure
+    ${log_ret}=    run shell    logcat -d
+    log    ${log_ret}
+    ${str_found}=    set variable if    """${search_str}""" in """${log_ret}"""    True    False
+    [Return]    ${str_found}

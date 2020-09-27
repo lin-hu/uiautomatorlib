@@ -1,0 +1,61 @@
+*Settings*							
+Documentation	*Description*						
+...							
+...	Power measurement for the characterization table provided by marketing. All measurements are in quiescent mode.						
+Suite Setup	Power Measurement Suite Setup	ATM_Google_release_power_measurement.csv					
+Suite Teardown							
+Test Setup	Default Test Setup						
+Test Teardown							
+Force Tags							
+Resource	${CURDIR}/../power_measurement_resources.tsv						
+Resource	GoogleTestResource.tsv						
+							
+*Test Cases*							
+ATMPower	[Documentation]	ATM Google use case power measurement(CL/CM)					
+	[Tags]						
+	Agilent N6705B.Enable Output	1:2	On				
+	Comment	Force Unload All Models					
+	hotword_enable	${false}					
+	Comment	Reboot Device					
+	#Start measurement						
+	Measure Power	5s	Sleep++	#sleep++: bootup with no plugins			
+	Measure Sound Recording	#telephony and optimal					
+	Measure Chre Ambient	#chre + ambient					
+	Measure Hotword	#standby and hotword+chre					
+	Comment	Agilent N6705B.Enable Output	1:2	Off			
+							
+*Keywords*							
+MeasureSoundRecording	Start App	${SoundTriggerApp}					
+	sleep	1s					
+	text click	Record OFF	#start recording				
+	sleep	1s	#it takes some time to start				
+	log	START to measure!!!	WARN				
+	Measure Power	2s	Telephony	#telephony: start soundrecording and measure 3sec			
+	sleep	3s	#at least wait for 3sec				
+	Measure Power	5s	Power mode optimal	#optimal: start soundrecording and wait for 3sec			
+	text click	Record ON	#stop recording				
+	StopApp	${SoundTriggerApp}					
+	sleep	2s					
+							
+MeasureChreAmbient	Start App	${SoundTriggerApp}					
+	model_start	${ModelChre}					
+	sleep	1s					
+	model_start	${ModelAmbient}					
+	sleep	1s					
+	Measure Power	5s	CHRE and Ambient	#setup CHRE and Ambient and wait for 3 sec			
+	model_stop	${ModelChre}					
+	sleep	1s					
+	model_stop	${ModelAmbient}					
+	Stop App	${SoundTriggerApp}					
+	sleep	2s					
+							
+MeasureHotword	hotword_enable	${true}					
+	Measure Power	3s	Standby	#enable hotword and measure next 3 sec			
+	Start App	${SoundTriggerApp}					
+	model_start	${ModelChre}					
+	sleep	3s					
+	Measure Power	5s	Hotword and CHRE	#setup CHRE and Hotword and wait for 3 sec			
+	model_stop	${ModelChre}					
+	sleep	1s					
+	Stop App	${SoundTriggerApp}					
+	sleep	2s					

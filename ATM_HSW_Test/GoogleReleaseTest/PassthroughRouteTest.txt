@@ -1,0 +1,51 @@
+*** Settings ***
+Documentation     Push passthrough route setup script to device and run
+Suite Setup       DefaultSuiteSetup
+Test Setup        PT_route_test_setup
+Test Teardown     default_test_teardown
+Force Tags        NO_RUN
+Resource          GoogleTestResource.tsv
+
+*** Variables ***
+${local_script_dir}    C:\\workspace\\linhu\\athleticomobile\\debug\\google-test-script
+${remote_script_dir}    /data/data/google-test-script
+${music_30s}      ${music_local}\\music_stereo_30sec48k.wav
+
+*** Test Cases ***
+portB_test
+    PT_port_test    recB.sh    tearB.sh    DMic_1B.wav
+
+portC_test
+    PT_port_test    recC.sh    tearC.sh    DMic_1C.wav
+
+portD_test
+    PT_port_test    recD.sh    tearD.sh    DMic_1D.wav
+
+portCDC_test
+    PT_port_test    recCDC-tdm.sh    tearCDC-tdm.sh    DMic_1CDC.wav
+
+port_cb_to_a_test
+    PT_port_test    port_cb_to_a_tdm.sh    port_cb_to_a_tdm_tear.sh    DMic12_cb.wav
+
+port_cdc_b_c_to_a_test
+    PT_port_test    port_cdc_b_c_to_a_tdm.sh    None    DMic_all.wav
+
+*** Keywords ***
+PT_port_test
+    [Arguments]    ${setup_sh}    ${tear_sh}    ${rec_file}
+    startPlayRecord    ${music_30s}    ${None}    2    1    20000    ${True}
+    ...    ${16000}
+    #setup route and record
+    ${ret}=    run shell    ${remote_script_dir}/${setup_sh}
+    pullRemoteFile    ${AUDIO_DIR_REMOTE}/${rec_file}    ${RESULTS DIR}\\${rec_file}
+    ${wav_size}    ${error_msg}=    valid_wav    ${RESULTS DIR}\\${rec_file}
+    #teardown
+    run keyword if    ${tear_sh}    run shell    ${remote_script_dir}/${tear_sh}
+    run keyword if    ${wav_size} == False    fail    ${error_msg}
+
+PT_route_test_setup
+    Default Test Setup
+    Directory Should Not Be Empty    ${local_script_dir}
+    pushLocalFile    ${local_script_dir}    ${AUDIO_DIR_REMOTE}
+    run shell    chmod 777 ${remote_script_dir}/*.*
+    run shell    rm ${AUDIO_DIR_REMOTE}/*.wav    #remove all the wave file

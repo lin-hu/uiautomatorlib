@@ -1,0 +1,78 @@
+*** Settings ***
+Suite Setup       DefaultSuiteSetup
+Test Setup        Default Test Setup
+Test Teardown     default_test_teardown
+Resource          GoogleTestResource.tsv
+
+*** Variables ***
+
+*** Test Cases ***
+spi_reliability_test
+    [Documentation]    Push random.bin(32-byte aligned) to /data/data and run spi_reliability_test
+    [Tags]    sanity
+    ${random_bin}=    set variable    C:\\workspace\\linhu\\athleticomobile\\debug\\random.bin
+    pushLocalFile    ${random_bin}    ${AUDIO_DIR_REMOTE}
+    ${ret}=    run shell    spi_reliability_test
+    #check return message
+
+sensor_algo_param_test
+    run shell    sensor_param_test -g 0x1
+
+CHRE_tunneling_test
+    [Documentation]    CHRE tunneling:
+    ...    1. no FW crash
+    ...    2. no app crash
+    ...    3. tunneling data is valid
+    ...    4. start CHRE model in soundtrigger app first
+    #start CHRE model
+    StartApp    ${SoundTriggerApp}
+    model_start    ${ModelChre}
+    #CHRE tunneling
+    Start Tunneling Capture    ${chre_tunnel_param}
+    Play Record    ${music_6s}    ${None}    2    1    0    ${True}
+    ...    ${16000}
+    Stop Tunneling Capture
+    #get tunneling data
+    pullRemoteFile    ${TunnelRemoteDir}/${chre_tunnel_file}    ${RESULTS DIR}
+    #stop CHRE model
+    model_stop    ${ModelChre}
+    #check funneling file
+    Comment    ${wav_size}    ${error_msg}=    valid_wav    ${RESULTS DIR}\\${chre_tunnel_file}
+    Comment    run keyword if    ${wav_size} == False    fail    ${error_msg}
+    File Should Not Be Empty    ${RESULTS DIR}\\${chre_tunnel_file}
+
+Soli_tunneling_test
+    [Documentation]    1. Start sensor manager model in soundtrigger app first
+    ...    2. need to flash eprom and compare tunneling data
+    #start sensor manager
+    StartApp    ${SoundTriggerApp}
+    model_start    ${ModelSensor}
+    #soli tunneling
+    Start Tunneling Capture    ${soli_tunnel_param}
+    Play Record    ${music_6s}    ${None}    2    1    0    ${True}
+    ...    ${16000}
+    Stop Tunneling Capture
+    #check tunneling data
+    pullRemoteFile    ${TunnelRemoteDir}/${soli_tunnel_file}    ${RESULTS DIR}
+    #stop sensor manager
+    model_stop    ${ModelSensor}
+    #check funneling file
+    Comment    ${wav_size}    ${error_msg}=    valid_wav    ${RESULTS DIR}\\${soli_tunnel_file}
+    Comment    run keyword if    ${wav_size} == False    fail    ${error_msg}
+    File Should Not Be Empty    ${RESULTS DIR}\\${soli_tunnel_file}
+
+script_trigger_test
+    run shell    script_trigger_test -g 6
+
+force_crash_test
+    run shell    crash_trigger_test -c
+    ${fw_crashed}=    search_str_dmesg    ${fw_crash_str}
+    run keyword if    ${fw_crashed} == ${False}    fail    Force CM4 FW crash Failed!
+    run shell    dmesg -c
+    sleep    2s
+    run shell    crash_trigger_test -h
+    ${fw_crashed}=    search_str_dmesg    ${fw_crash_str}
+    run keyword if    ${fw_crashed} == ${False}    fail    Force HMD FW crash Failed!
+    run shell    dmesg -c    #avoid false alarm in teardown
+
+*** Keywords ***

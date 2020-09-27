@@ -1,0 +1,142 @@
+*Settings*							
+Library	bellagio.version						
+Library	bellagio.SystemLib.testbed_logging.testbedlog	WITH NAME	testbedlog				
+Library	bellagio.SystemLib.AudioManip.AudioManipApi.AudioManipulation	WITH NAME	am				
+Library	bellagio.DriverManager.audio.AudioApi.AudioApi	WITH NAME	AudioApi				
+Library	bellagio.SystemLib.signalproc	WITH NAME	verify				
+Library	Operating System						
+Library	String						
+Library	Collections						
+Library	bellagio.SystemLib.tools	WITH NAME	tools				
+Library	bellagio.SystemLib.tools.audioVerify.audioVerify	WITH NAME	hswVerify				
+Library	bellagio.SystemLib.adb.hostApi.HostApi	WITH NAME	hostApi				
+Library	bellagio.SystemLib.Utility.TLparser	WITH NAME	parser				
+Library	bellagio.SystemLib.adb.hostUiCtrl.hostUiCtrl	WITH NAME	hostUI				
+Resource	host_collect_debug_info.tsv						
+							
+*Variables*							
+${AUDIO_DIR_LOCAL}	P:${/}Share${/}Test${/}TestSignal${/}Host_Software_Driver${/}App_Test						
+${AUDIO_DIR_REMOTE}	/data/data						
+${AUDIO_DIR_REF}	${AUDIO_DIR_LOCAL}						
+${bellagio_package}	com.audience.bellagiotests						
+${Bellagio_Test_App}	C:\\Program Files\\Audience\\Bellagio\\bin\\bellagiotests.apk						
+${Iterations}	1						
+${Stress_Iterations}	50						
+${Suite_Set_UP_Flag}	False						
+${Deafult_Music_Pkg}	com.android.music						
+${Capture_Logs}	False						
+${Def_Sound_rec_pkg}	com.android.soundrecorder						
+${Uninstall_Bellagio_APK}	uninstall com.audience.bellagiotests						
+${ADB_LOG_FOLDER}	${EMPTY}						
+${Bui_Test_App}	buiautomator	# This apk is used for UiAutomator automation					
+${Setting_Flag}	${False}						
+${DUT}	OpenQ_Athletico						
+${DUT_Message}	iaxxx						
+${music_local}	P:${/}Share${/}Test${/}TestSignal${/}Audio_Feature_Test${/}music						
+							
+*Keywords*							
+Default Suite SetUp	${Bellagio_Version}=	Get Bellagio Version					
+	Log	Bellagio Version = ${Bellagio_Version}					
+	${TLparser_Version}=	parser.getParserVer					
+	Log	Tunneling Raw Data Parser Version = ${TLparser_Version}					
+	Update Suite Setup Directory						
+	Comment	rebootDevice					
+	Set Global Variable	${Suite_Set_UP_Flag}	${True}				
+	Send Adb Command	wait-for-device					
+	hostApi.Set Root						
+	sleep	5s					
+	Send Adb Command	wait-for-device					
+	hostApi.Remount						
+	hostApi.Init Device	${DUT}	${DUT_Message}				
+	Update App	${Bui_Test_App}	NO				
+	Send Adb Command	wait-for-device					
+	Check Devices						
+	Comment	Create Folder	${AUDIO_DIR_REMOTE}				
+	Set Global Variable	${ADB_LOG_FOLDER}	${OUTPUT_DIR}\\ADB_LOG_DIR				
+	Create Directory	${ADB_LOG_FOLDER}					
+	wakeupUnlock	#wait for screen up					
+	Run shell	rm /data/data/*.bin					
+							
+Default Test Setup	Update Results Directory						
+	Open Log	${RESULTS DIR}${/}log.xml					
+	Comment	run shell	dmesg -c				
+	Comment	Setup Test Results File					
+	Comment	Sleep	10s	# Let's wait 10s in case previous test case failed due to FW crash. The recovery needs 5 - 10s			
+	Set Test Variable	${SoundTriggerTestApp_started}	${False}				
+							
+Setup Test Results File	[Arguments]	${test_flag}=0					
+	Set Test Variable	${RESULTS_INFO_FILE}	${RESULTS DIR}${/}result_info_${test_flag}.txt				
+	${date}=	Get Current Date	exclude_millis=True				
+	${desc}=	Catenate	Test Results	\nFor test case: ${TEST NAME}	\n${date}\n\n		
+	Log	${RESULTS_INFO_FILE}					
+	Create File	${RESULTS_INFO_FILE}	content=${desc}				
+	Append To File	${RESULTS_INFO_FILE}	Test Path: ${RESULTS DIR}\n\n				
+	${fw_version}	${host_version}	${package_version}	${plugin_version}=	Get Device SW Info		
+	Append To File	${RESULTS_INFO_FILE}	\n## FW_Version:\n\n${fw_version}				
+	Append To File	${RESULTS_INFO_FILE}	\n## Host_Version:\n\n${host_version}				
+	Append To File	${RESULTS_INFO_FILE}	\n## Package_Version:\n\n${package_version}				
+	Append To File	${RESULTS_INFO_FILE}	\n## Plugin_Version:\n\n${plugin_version}				
+	Append To File	${RESULTS_INFO_FILE}	\n\n## Test Results\n				
+							
+Update Suite Setup Directory	${path}=	Replace String	${SUITE NAME}	.	${/}		
+	${path_setup}=	Join Path	${OUTPUT DIR}	Results	${path}	SUITE_SETUP	
+	${path_setup}=	Replace String	${path_setup}	${SPACE}	_		
+	Set Suite Variable	${RESULTS DIR}	${path_setup}				
+	Create Directory	${RESULTS DIR}					
+	Set Suite Variable	${RESULTS_INFO_FILE}	${RESULTS DIR}${/}suite_setup_info.txt				
+							
+Get 16K File	[Arguments]	${OriginalFile}					
+	${DownsampledFile}=	Replace String Using Regexp	${OriginalFile}	_\\d+k.wav	_16k.wav		
+	${tmp}=	Run Keyword If	'${DownsampledFile}' \ == '${OriginalFile}'	Replace String Using Regexp	${OriginalFile}	.wav	_16k.wav
+	${DownsampledFile}=	Set Variable If	'${DownsampledFile}' \ == '${OriginalFile}'	${tmp}	${DownsampledFile}		
+	[Return]	${DownsampledFile}					
+							
+Kill Back Ground Apps	${status_Sound_rec}=	Verify Appis Launched	${Def_Sound_rec_pkg}				
+	Run Keyword If	'${status_Sound_rec}' == 'True'	KillApp	${Def_Sound_rec_pkg}			
+	${status_cvq}=	VerifyAppisLaunched	${Voice_Q_Pkg}				
+	Run Keyword If	'${status_cvq}' == 'True'	Pull Captured Screen				
+	Run Keyword If	'${status_cvq}' == 'True'	KillApp	${Voice_Q_Pkg}			
+	${status_bellagio}=	VerifyAppisLaunched	${bellagio_package}				
+	Run Keyword If	'${status_bellagio}' == 'True'	Kill App	${bellagio_package}			
+	${status_skype}=	VerifyAppisLaunched	${skype_package}				
+	Run Keyword If	'${status_skype}' == 'True'	Kill App	${skype_package}			
+	Run Keyword If	'${status_skype}' == 'True'	Run Shell	pm clear com.skype.raider			
+	Run Keyword If	'${Capture_Logs}' == 'False'	Stop_Capture_logs	${ADB_LOG_FOLDER}\\${TEST NAME}_${count}			
+	Run Keyword If Test Failed	Reboot Device					
+	Run Keyword If Test Failed	Set Global Variable	${Setting_Flag}	${False}			
+							
+Pull Captured Screen	Run Shell	screencap /sdcard/cvq.png					
+	Pull Remote File	/sdcard/cvq.png	${RESULTS DIR}\\${TEST NAME}_${count}.png	${True}			
+							
+Check Device Connection	[Arguments]	${Reset_Info}=${EMPTY}					
+	: FOR	${count}	IN RANGE	10			
+		Log	Check adb device connection ${Reset_Info} ${count} times ...				
+		${attached_device}=	Check Devices	# Check Devices	# Display the list of adb devices attached		
+		Append To File	${RESULTS_INFO_FILE}	\nattached_device = ${attached_device} for ${Reset_Info}			
+		${device_name_length}=	Get Length	${attached_device}			
+		Run Keyword if	${device_name_length} > 0	Exit For Loop			
+		Sleep	5s				
+	Run Keyword if	${device_name_length}==0	Append To File	${RESULTS_INFO_FILE}	\nNo adb device attached ${Reset_Info}		
+	Run Keyword if	${device_name_length}==0	Fail	No adb device attached ${Reset_Info}			
+							
+Reboot Device	[Arguments]	${iterationNum}=0					
+	Check Device Connection	Before Reboot Device in Interation ${iterationNum}					
+	Send Adb Command	reboot					
+	Send Adb Command	wait-for-device					
+	Check Device Connection	After Reboot Device in Interation ${iterationNum}					
+	Send Adb Command	root					
+	sleep	3s					
+	Send Adb Command	remount					
+	wakeupUnlock						
+							
+Update Results Directory	${path}=	Replace String	${SUITE NAME}	.	${/}		
+	${path}=	Join Path	${OUTPUT DIR}	Results	${path}	${TEST NAME}	
+	${path}=	Replace String	${path}	${SPACE}	_		
+	Set Suite Variable	${RESULTS DIR}	${path}				
+	Create Directory	${RESULTS DIR}					
+							
+Verify Audio Quality with XCF	[Arguments]	${RecordedFile}	${ReferenceFile}	${Record_Audio_sample_Rate}=${48000}			
+	${LocalCapFile}=	Set Variable	${RESULTS DIR}${/}${RecordedFile}				
+	${LocalRefFile}=	Set Variable	${AUDIO_DIR_REF}${/}${ReferenceFile}				
+	Comment	${XCF_Passed}=	Run Keyword And Continue On Failure	VerifyFrameXCF	${LocalRefFile}	${LocalCapFile}	${PassCriteria}
+	Comment	Run Keyword And Continue On Failure	Should Be True	${XCF_Passed}	Cross-correlation test failed.		

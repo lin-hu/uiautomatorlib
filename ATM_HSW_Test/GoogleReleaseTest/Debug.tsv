@@ -1,0 +1,26 @@
+*Settings*							
+Suite Setup	Default Suite SetUp	# Default Suite SetUp					
+Test Setup	Default Test SetUp	# Default Test SetUp					
+Resource	GoogleTestResource.tsv						
+							
+*Variables*							
+${stress_num}	2						
+							
+*Test Cases*							
+Collect Debug Info	${local_path}=	Set Variable	${RESULTS DIR}				
+	Collect dmesg	${local_path}					
+	Collect logcat	${local_path}					
+	Collect tunneling info	${local_path}					
+	Dump cmd info reg	${local_path}					
+	Dump reg info	${local_path}					
+	Dump crash event	${local_path}					
+	Collect All debug info	${local_path}					
+	Comment	log	test				
+							
+Unload all models	Force Unload All Models						
+							
+mem_sweep_test	: FOR	${count}	IN RANGE	${stress_num}			
+		${ret}=	run shell	/data/data/mem_sweep_test_tool			
+		log	Test ${count}!	WARN			
+		run keyword if	"""fail"" in """"""${ret}"""""""	log	failed!!!	WARN	
+		run keyword if	"""fail"" in """"""${ret}"""""""	log	${ret}	WARN	

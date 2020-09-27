@@ -1,0 +1,78 @@
+*Settings*							
+Library	bellagio.version						
+Library	bellagio.SystemLib.testbed_logging.testbedlog	WITH NAME	testbedlog				
+Library	Operating System						
+Library	String						
+Library	DateTime						
+Library	bellagio.SystemLib.tools	WITH NAME	tools				
+Library	bellagio.SystemLib.adb.hostApi.HostApi	WITH NAME	hostApi				
+							
+*Variables*							
+${HSWDataRemote}	/data/data						
+${AdbPullEnable}	True						
+${AdbCmdTimeout}	10						
+							
+*Keywords*							
+Hostapi Adb Pull Remote File	[Arguments]	${remote_file}	${local_file}	${delete_remote_file}=${False}			
+	Return From Keyword if	'${AdbPullEnable}'=='False'					
+	HostApi.pull Remote File	${remote_file}	${local_file}	${delete_remote_file}	${AdbCmdTimeout}		
+							
+Collect dmesg	[Arguments]	${local_path}	${flag}=None				
+	${dmesg_filename}=	Set Variable If	'${flag}' != 'None'	dmesg-output_${flag}.txt	dmesg-output.txt		
+	run shell	dmesg > ${HSWDataRemote}/${dmesg_filename}					
+	Log	pulling ${HSWDataRemote}/${dmesg_filename} ...					
+	Hostapi Adb Pull Remote File	${HSWDataRemote}/${dmesg_filename}	${local_path}\\${dmesg_filename}				
+							
+Collect logcat	[Arguments]	${local_path}	${flag}=None				
+	${logcat_filename}=	Set Variable If	'${flag}' != 'None'	logcat-output_${flag}.txt	logcat-output.txt		
+	run shell	logcat -d > ${HSWDataRemote}/${logcat_filename}					
+	Log	pulling ${HSWDataRemote}/${logcat_filename} ...					
+	Hostapi Adb Pull Remote File	${HSWDataRemote}/${logcat_filename}	${local_path}\\${logcat_filename}				
+							
+Collect tunneling info	[Arguments]	${local_path}	${flag}=None				
+	${spi_device}=	Set Variable	spi32766.0				
+	${date}=	Get Current Date	exclude_millis=True				
+	${tunneling_info_path}=	Set Variable	/sys/bus/spi/devices/${spi_device}				
+	${filename}=	Set Variable If	'${flag}' != 'None'	tunneling_info_${flag}.txt	tunneling_info.txt		
+	${tunneling_info}=	run shell	cat ${tunneling_info_path}/tunnel_*				
+	${desc}=	Catenate	Tunneling Debug Info	\nFor test case: ${testName}	\n${date}\n		
+	Create File	${local_path}\\${filename}	\n\ncontent=${desc}\n\n### Tunneling Info:\n\n${tunneling_info}				
+							
+Get Device SW Info	${spi_dir}=	Set Variable	spi32766.0				
+	${fw_version}=	run shell	cat /sys/bus/spi/devices/${spi_dir}/iaxxx/fw_version				
+	${host_version}=	run shell	cat /sys/bus/spi/devices/${spi_dir}/iaxxx/host_version				
+	${package_version}=	run shell	cat /sys/bus/spi/devices/${spi_dir}/iaxxx/package_version				
+	${plugin_version}=	run shell	cat /sys/bus/spi/devices/${spi_dir}/iaxxx/plugin_version				
+	[Return]	${fw_version}	${host_version}	${package_version}	${plugin_version}		
+							
+Dump cmd info reg	[Arguments]	${local_path}	${flag}=None				
+	${date}=	Get Current Date	exclude_millis=True				
+	${filename}=	Set Variable If	'${flag}' != 'None'	cmdInfoDump_${flag}.txt	cmdInfoDump.txt		
+	${cmdInfoDump}=	run shell	cat /dev/regdump				
+	${desc}=	Catenate	Reg Dump Info	\nFor test case: ${testName}	\n${date}\n		
+	Create File	${local_path}\\${filename}	\n\ncontent=${desc}\n\n### RegDump Info:\n\n${cmdInfoDump}				
+							
+Dump reg info	[Arguments]	${local_path}	${flag}=None				
+	${regInfoDump_filename}=	Set Variable If	'${flag}' != 'None'	regInfoDump_${flag}.txt	regInfoDump.txt		
+	run shell	dump_debug_info -r -o > ${HSWDataRemote}/${regInfoDump_filename}					
+	Log	${HSWDataRemote}/${regInfoDump_filename} ...					
+	Hostapi Adb Pull Remote File	${HSWDataRemote}/${regInfoDump_filename}	${local_path}\\${regInfoDump_filename}				
+							
+Dump crash event	[Arguments]	${local_path}	${flag}=None				
+	Comment	Run Shell	rm /data/data/*.bin				
+	run shell	crash_event_logger -f					
+	${crashEventDumpFiles}=	Run Shell	ls -1 ${HSWDataRemote}/*.bin				
+	${crashEventDumpFiles}=	Split To Lines	${crashEventDumpFiles}				
+	Comment	Log	${crashEventDumpFiles}				
+	${size}=	Get Length	${crashEventDumpFiles}				
+	: FOR	${count}	IN RANGE	${size}			
+		${dumpFile}=	Set Variable	${crashEventDumpFiles[${count}]}			
+		Hostapi Adb Pull Remote File	${dumpFile}	${local_path}			
+							
+Collect All debug info	[Arguments]	${local_path}	${flag}=None				
+	Collect dmesg	${local_path}	${flag}				
+	Collect logcat	${local_path}	${flag}				
+	Collect tunneling info	${local_path}	${flag}				
+	Dump cmd info reg	${local_path}	${flag}				
+	Dump reg info	${local_path}	${flag}				
+	Dump crash event	${local_path}	${flag}				

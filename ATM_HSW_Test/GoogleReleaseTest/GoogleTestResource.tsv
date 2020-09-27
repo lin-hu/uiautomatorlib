@@ -1,0 +1,231 @@
+*Settings*							
+Documentation	ATM Google Android app test resource						
+Resource	../host_software_resources.tsv						
+							
+*Variables*							
+${SoundTriggerApp}	com.android.test.soundtrigger						
+${SoundRecorderApp}	com.sonymobile.androidapp.audiorecorder						
+${ModelChre}	Model CHRE						
+${ModelAmbient}	Model AmbientAudio						
+${ModelSensor}	Model SensorManager						
+${ModelEntity}	Model Entity						
+${model_start_str}	: Started						
+${model_unload_str}	: Unloaded						
+${fw_crash_str}	FW Crash						
+${fw_blk_err_str}	Update Block Failed						
+${RecRemoteDir}	"""/sdcard/recordings/music recordings"""						
+${music_6s}	${AUDIO_DIR_LOCAL}\\num1_10_1c.wav						
+${sample_music}	p:\\Share\\Test\\TestSignal\\GoogleHSWTest\\test_music_16000_2.wav	#google sample music for AmbientAudio test					
+${screen_dump}	/sdcard/window_dump.xml						
+${TunnelRemoteDir}	/data/data						
+${tunnelTest}	tunneling_hal_test						
+${chre_tunnel_param}	0 1 0 0x3160 1 0xF						
+${chre_tunnel_file}	tnl_opid0-src0x3160-enc0xf_client0.pcm						
+${soli_tunnel_param}	0 1 0 0x3260 1 0xF						
+${soli_tunnel_file}	tnl_opid0-src0x3260-enc0x0_client0.raw						
+${hotword_enabled_str}	Start Hotword Recognition Status: true						
+${hotword_disabled_str}	Stop Hotword Recognition status: true						
+${KW_DIR}	P:${/}Share${/}Test${/}TestSignal${/}Audio_Feature_Test${/}VoiceQ_KW						
+${OK_Google}	OK_Google_16K.wav						
+${HotWordWav}	${KW_DIR}\\${OK_Google}						
+${hotword_detected_str}	AlwaysOnHotwordDetector: onDetected	#TODO: confirm with HSW					
+${AdbCmdTimeout}	10						
+							
+*Keywords*							
+StartApp	[Arguments]	${apk_name}					
+	[Documentation]	Launch SoundTrigger test app and check whether it's started or not					
+	Run Shell	am start ${apk_name}					
+	${started}=	VerifyAppisLaunched	${apk_name}				
+	${SoundTriggerTestApp_started}=	Set Variable	${True}				
+	[Return]	${started}					
+							
+StopApp	[Arguments]	${apk_name}					
+	Comment	Run Shell	am force-stop ${apk_name}				
+	goback	${4}					
+	${SoundTriggerTestApp_started}=	Set Variable	${False}				
+							
+StartSoundrecorder	[Arguments]	${apk_name}					
+	[Documentation]	Launch SoundTrigger test app and check whether it's started or not					
+	${start_activity}=	run shell	cmd package resolve-activity --brief -c android.intent.category.LAUNCHER ${apk_name} | tail -1				
+	log	${start_activity}					
+	Run Shell	am start -n ${start_activity}					
+	${started}=	VerifyAppisLaunched	${apk_name}				
+	[Return]	${started}					
+							
+ui_model_start	[Arguments]	${model_name}					
+	[Documentation]	Load and start given model					
+	Log	Model Start for ${model_name}					
+	text click	${model_name}					
+	text click	LOAD					
+	text click	START					
+	sleep	2s					
+							
+ui_model_stop	[Arguments]	${model_name}					
+	[Documentation]	Stop and Unload given model					
+	Log	Model Start for ${model_name}					
+	text click	${model_name}					
+	text click	STOP					
+	text click	UNLOAD					
+	sleep	2s					
+							
+CheckUiStr	[Arguments]	${search_str}					
+	[Documentation]	Check is UI contains input string					
+	Log	search_str = ${search_str}					
+	${retVal}=	text on screen	${search_str}				
+	[Return]	${retVal}					
+							
+model_start	[Arguments]	${model_name}					
+	Append To File	${RESULTS_INFO_FILE}	"\nModel Start for model_name ""${model_name}"" ......"				
+	ui_model_start	${model_name}					
+	${search_str}=	Catenate	SEPARATOR=	${model_name}	${model_start_str}		
+	${status}=	CheckUiStr	${search_str}				
+	Run Keyword if	${status}==${False}	Append To File	${RESULTS_INFO_FILE}	"\nModel Start Failed for model_name ""${model_name}"""		
+	Run Keyword if	${status}==${False}	Fail	"Model Start Failed for model_name ""${model_name}"""			
+							
+model_stop	[Arguments]	${model_name}	${check_result}=${True}				
+	Append To File	${RESULTS_INFO_FILE}	"\nModel Stop for model_name ""${model_name}"" ......"				
+	ui_model_stop	${model_name}					
+	${search_str}=	Catenate	SEPARATOR=	${model_name}	${model_unload_str}		
+	${status}=	CheckUiStr	${search_str}				
+	Run Keyword if	${status}==${False}	Append To File	${RESULTS_INFO_FILE}	"\nModel Stop Failed for model_name ""${model_name}"""		
+	Run Keyword if	${status}==${False} and ${check_result}==${True}	Fail	"Model Stop Failed for model_name ""${model_name}"""			
+							
+SoundrecorderRecord	[Arguments]	${play_file}	${local_wav}				
+	${rec_local}=	set variable	${local_wav}				
+	${PlayFile}=	set variable	${play_file}				
+	run shell	rm ${RecRemoteDir}/*.wav	#rm all the old recordings				
+	StartSoundrecorder	${SoundRecorderApp}					
+	sleep	1s					
+	run shell	input tap 530 530	#start recording				
+	Comment	sleep	3s				
+	Play Record	${PlayFile}	${None}	2	1	0	${True}
+	...	${48000}					
+	Comment	Play Record	${PlayFile}	${None}	2	1	0
+	...	${True}	${48000}				
+	run shell	input tap 655 560	#stop recording				
+	sleep	2s					
+	StopApp	${SoundRecorderApp}					
+	${rec_file}=	run shell	ls ${RecRemoteDir}/*.wav				
+	${rec_file}=	evaluate	"""""""${rec_file}"""""".strip()"				
+	log	${rec_file}					
+	pullRemoteFile	${rec_file}	${rec_local}				
+							
+Start Tunneling Capture	[Arguments]	${tunnel_params}					
+	run shell	rm /data/data/unparsed_output					
+	log many	\nTunneling command: ${tunnelTest}	${tunnel_params}				
+	Append To File	${RESULTS_INFO_FILE}	\nTunneling command: ${tunnelTest} ${tunnel_params}				
+	hostApi.startHalTest	${tunnelTest}	params=${tunnel_params}	# start tunneling capture			
+							
+Stop Tunneling Capture	run shell	killall -s 2 ${tunnelTest}	# Stop tunneling app				
+							
+enter_setup_voicematch	run shell	am start -a android.settings.SETTINGS					
+	text click	Google					
+	sleep	1s					
+	search and click	Search, Assistant & Voice					
+	sleep	1s					
+	text click	Voice					
+	sleep	1s					
+	text click	Voice Match					
+	sleep	1s					
+	#LHDEBUG						
+	Comment	run shell	am start-activity com.google.android.googlequicksearchbox/com.google.android.apps.gsa.searchnow.SearchNowActivity				
+	Comment	run shell	input tap 1665 1005	#setup			
+	Comment	sleep	1s				
+	Comment	run shell	input tap 74 410	#settings	input tap 105 460		
+	Comment	sleep	1s				
+	Comment	run shell	input tap 31 365	#voice	input tap 35 545		
+	Comment	sleep	1s				
+	Comment	run shell	input tap 735 260	#voice match	input tap 700 260		
+	Comment	sleep	1s				
+							
+hotword_enable	[Arguments]	${enable}=${true}					
+	[Documentation]	Enable or Disable Google hotword setting					
+	Append To File	${RESULTS_INFO_FILE}	hostword_enable: ${enable} ......				
+	enter_setup_voicematch						
+	${hotword_str}=	set variable if	${enable}	${hotword_enabled_str}	${hotword_disabled_str}		
+	enable_disable_hotword	${hotword_str}					
+	goback	${4}					
+							
+hotword_detect	[Arguments]	${stress_test}=${False}					
+	Append To File	${RESULTS_INFO_FILE}	\nhostword_detect start (stress=${stress_test}) ......				
+	run shell	logcat -c					
+	Play Record	${HotWordWav}	${None}	2	1	0	${True}
+	...	${16000}					
+	#check hotword detection						
+	${hotword_ret}=	run shell	logcat -d				
+	log	hotword_detected_str=${hotword_detected_str}, \nhotword_ret=${hotword_ret}					
+	Comment	should be true	"""""""${hotword_detected_str}"""""" in """"""${hotword_ret}"""""""				
+	${retVal}=	set variable if	"""""""${hotword_detected_str}"""""" in """"""${hotword_ret}"""""""	${True}	${False}		
+	Return From Keyword if	${stress_test}==${True}	${retVal}				
+	${result_str}=	set variable if	${retVal}==${True}	KW detected!	Failed to detect KW!! \n${hotword_ret}		
+	Append To File	${RESULTS_INFO_FILE}	${result_str}				
+	run keyword if	${retVal}==${True}	log	KW detected!	ELSE	Fail	Failed to detect KW!!
+	#exit from popup window						
+	sleep	2s					
+	run shell	input keyevent 3					
+	[Return]	${retVal}					
+							
+enable_disable_hotword	[Arguments]	${enable_disable_str}					
+	[Documentation]	click to disable or enable hotword: make sure it works					
+	run shell	logcat -c					
+	Comment	run shell	input tap 1870 270	#ok google			
+	text click	Ok Google					
+	sleep	1s					
+	${hotword_ret}=	run shell	logcat -d				
+	${hotword_enabled}=	evaluate	"""""""${enable_disable_str}"""""" in """"""${hotword_ret}"""""""				
+	run keyword if	${hotword_enabled}	return from keyword				
+	run shell	logcat -c					
+	Comment	run shell	input tap 1870 270				
+	text click	Ok Google					
+	sleep	1s					
+	${hotword_ret}=	run shell	logcat -d				
+	${hotword_enabled}=	evaluate	"""""""${enable_disable_str}"""""" in """"""${hotword_ret}"""""""				
+	Run Keyword if	${hotword_enabled}==${False}	Append To File	${RESULTS_INFO_FILE}	Failed to ${enable_disable_str}	ELSE	Append To File
+	...	${RESULTS_INFO_FILE}	Succeed to ${enable_disable_str}				
+	Run Keyword if	${hotword_enabled}==${False}	Fail	Failed to ${enable_disable_str}			
+							
+valid_wav	[Arguments]	${wav_file}					
+	[Documentation]	Check whether wave file is empty or silence					
+	${wav_size}=	am.getWavSize	${wav_file}				
+	${validate_wav_status}=	set variable if	${wav_size} == ${0}	${False}	${True}		
+	${validate_wav_msg}=	set variable if	${wav_size} == ${0}	wav file ${wav_file} size is 0!!!	${EMPTY}		
+	Run Keyword if	${validate_wav_status}== ${False}	Append To File	${RESULTS_INFO_FILE}	\n${validate_wav_msg}		
+	Return From Keyword if	${validate_wav_status}== ${False}	${False}	${validate_wav_msg}			
+	#check silence						
+	${rms}	${pdb}=	get_wav_rms	${wav_file}			
+	${validate_wav_status}=	set variable if	${pdb} == ${-100.}	${False}	${True}		
+	${validate_wav_msg}=	set variable if	${pdb} == ${-100.}	\nSilence wav file ${wav_file} !!!			
+	Run Keyword if	${validate_wav_status}== ${False}	Append To File	${RESULTS_INFO_FILE}	\n${validate_wav_msg}		
+	[Return]	${validate_wav_status}	${validate_wav_msg}				
+							
+search_str_dmesg	[Arguments]	${search_str}					
+	[Documentation]	Search for specific string in return					
+	...	"run ""dmesg -c"" in test setup"					
+	${log_ret}=	run shell	dmesg				
+	log	search_str = ${search_str}\nlog_ret = ${log_ret}					
+	${str_found}=	set variable if	"""""""${search_str}"""""" in """"""${log_ret}"""""""	True	False		
+	[Return]	${str_found}					
+							
+Force Unload All Models	[Documentation]	Force to stop/unload all the models and ignore any ui message since they may not be started yet.					
+	Start App	${SoundTriggerApp}					
+	model_stop	${ModelAmbient}	${False}				
+	model_stop	${ModelChre}	${False}				
+	model_stop	${ModelEntity}	${False}				
+	model_stop	${ModelSensor}	${False}				
+	Stop App	${SoundTriggerApp}					
+							
+default_test_teardown	[Arguments]	${string}=${EMPTY}					
+	Run Keyword If Test Failed	Collect All debug info	${RESULTS DIR}	${TEST NAME}_NG			
+	Comment	check_fw_crash					
+							
+check_fw_crash	[Arguments]	${string}=${EMPTY}					
+	${fw_crashed}=	search_str_dmesg	${fw_crash_str}				
+	${fw_blk_err}=	search_str_dmesg	${fw_blk_err_str}				
+	run keyword if	${fw_blk_err}	log	FW block download err!!!	WARN		
+	run keyword if	${fw_crashed}	Collect All debug info	${RESULTS DIR}	${string}		
+	run keyword if	${fw_crashed}	Append To File	${RESULTS_INFO_FILE}	\n\nFW crashed!!! ${string}		
+	run keyword if	${fw_crashed}	fail	FW crashed!!! ${string}			
+	Comment	run keyword if	${fw_crashed}	Fatal Error			
+	Comment	run keyword if	${fw_crashed}	Reboot Device			
+	run keyword if	${fw_blk_err}	Collect All debug info	${RESULTS DIR}	${string}		
+	run keyword if	${fw_blk_err}	fail	FW download block err!!! ${string}			

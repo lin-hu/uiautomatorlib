@@ -1,0 +1,92 @@
+*** Settings ***
+Documentation     Different usecases and usecases switch within Soundtrigger APP and sound recorder
+Suite Setup       DefaultSuiteSetup
+Test Setup        Default Test Setup
+Test Teardown     default_test_teardown
+Resource          GoogleTestResource.tsv
+
+*** Variables ***
+@{hotword_event}    +tear_buffer_route    -tear_buffer_route    +tear_bargein_mic_route+    -tear_bargein_mic_route-    +flush_model+    -flush_model-    +teardown_hotword_package+
+...               -unload_st_package-    +teardown_buffer_plugin+    -unload_buffer_package-    +power_off_proc_mem enable    -power_off_proc_mem enable    +@stdev_audio_record_state    -@stdev_audio_record_state
+...               # String pair to indicate different event for latency profiling
+@{chre_event}     +@stdev_stop_recognition sound model (HOT_WORD)@+    -@stdev_stop_recognition sound model (HOT_WORD)    +@stdev_stop_recognition sound model (CHRE_AUDIO_MODEL)@+    -@stdev_stop_recognition sound model (CHRE_AUDIO_MODEL)    +@stdev_audio_record_state enabled(1)@+    -@stdev_audio_record_state enabled(1)@-    # String pair to indicate different event for latency profiling
+@{ambient_event}    +@stdev_stop_recognition sound model (HOT_WORD)@+    -@stdev_stop_recognition sound model (HOT_WORD)    +@stdev_stop_recognition sound model (AMBIENT_AUDIO_MODEL)@+    -@stdev_stop_recognition sound model (AMBIENT_AUDIO_MODEL)    +@stdev_audio_record_state enabled(1)@+    -@stdev_audio_record_state enabled(1)@-    # String pair to indicate different event for latency profiling
+@{entity_event}    +@stdev_stop_recognition sound model (HOT_WORD)@+    -@stdev_stop_recognition sound model (HOT_WORD)    +@stdev_stop_recognition sound model (ENTITY_AUDIO_MODEL)@+    -@stdev_stop_recognition sound model (ENTITY_AUDIO_MODEL)    +@stdev_audio_record_state enabled(1)@+    -@stdev_audio_record_state enabled(1)@-    # String pair to indicate different event for latency profiling
+@{sensor_event}    +@stdev_stop_recognition sound model (HOT_WORD)@+    -@stdev_stop_recognition sound model (HOT_WORD)    +@stdev_stop_recognition sound model (SENSOR_MANAGER_MODEL)@+    -@stdev_stop_recognition sound model (SENSOR_MANAGER_MODEL)    +@stdev_audio_record_state enabled(1)@+    -@stdev_audio_record_state enabled(1)@-    # String pair to indicate different event for latency profiling
+${latency_info_file}    usecase_latency_info.txt
+
+*** Test Cases ***
+Hotword_to_Soundrecording_latency
+    [Documentation]    Measure Soundrecorder start latency when hotword is enabled
+    hotword_enable    ${true}
+    run shell    logcat -c
+    #start soundrecording using soundtrigger app
+    Comment    SoundrecorderRecord    ${play_file}    ${rec_local}
+    Start App    ${SoundTriggerApp}
+    text click    Record OFF
+    sleep    1s
+    ${log}=    run shell    logcat -d | grep -e SoundTriggerHAL -e knowles_audio_route
+    text click    Record ON
+    Stop App    ${SoundTriggerApp}
+    Comment    ${log}=    get file    c:\\workspace\\linhu\\logcat.txt
+    ${length}=    Get length    ${hotword_event}
+    ${length}=    set variable    ${length/2}
+    create file    ${RESULTS DIR}${/}${latency_info_file}    ${log}\n\n\n
+    append to file    ${RESULTS DIR}${/}${latency_info_file}    ... ${TEST NAME} ...\n
+    : FOR    ${i}    IN RANGE    ${length}
+    \    ${start}    ${end}    ${time_interval}=    logcat_time_interval    ${log}    ${hotword_event[${i}*2]}
+    \    ...    ${hotword_event[${i}*2+1]}
+    \    append to file    ${RESULTS DIR}${/}${latency_info_file}    ${hotword_event[${i}*2]}:${start} / ${hotword_event[${i}*2+1]}:${end} ... ${time_interval} \n
+    ${start}    ${end}    ${time_interval}=    logcat_time_interval    ${log}    ${hotword_event[0]}    ${hotword_event[-1]}
+    append to file    ${RESULTS DIR}${/}${latency_info_file}    Total time: ${time_interval} \n
+
+Chre_to_Soundrecording_latency
+    [Documentation]    Measure Soundrecorder start latency when CHRE is started
+    Model_to_Soundrecording_latency    ${ModelChre}    ${chre_event}
+
+Ambient_to_Soundrecording_latency
+    [Documentation]    Measure Soundrecorder start latency when Ambient is started
+    Model_to_Soundrecording_latency    ${ModelAmbient}    ${ambient_event}
+
+Entity_to_Soundrecording_latency
+    [Documentation]    Measure Soundrecorder start latency when Entity is started
+    Model_to_Soundrecording_latency    ${ModelEntity}    ${entity_event}
+
+Sensor_to_Soundrecording_latency
+    [Documentation]    Measure Soundrecorder start latency when Sensor is started
+    Model_to_Soundrecording_latency    ${ModelSensor}    ${sensor_event}
+
+test
+    Model_to_Soundrecording_latency    ${ModelChre}    ${chre_event}
+
+*** Keywords ***
+Model_to_Soundrecording_latency
+    [Arguments]    ${model}    ${model_event}
+    Start App    ${SoundTriggerApp}
+    Comment    model_start    ${ModelChre}
+    text click    ${model}
+    text click    LOAD
+    text click    START
+    sleep    2s
+    run shell    logcat -c
+    #start soundrecording using soundtrigger app
+    text click    Record OFF
+    sleep    2s
+    ${log}=    run shell    logcat -d | grep -e SoundTriggerHAL -e knowles_audio_route
+    text click    Record ON
+    sleep    2s
+    text click    ${model}
+    text click    STOP
+    text click    UNLOAD
+    Comment    run keyword and continue on failure    model_stop    ${ModelChre}
+    Stop App    ${SoundTriggerApp}
+    ${length}=    Get length    ${model_event}
+    ${length}=    set variable    ${length/2}
+    create file    ${RESULTS DIR}${/}${TEST NAME}_info.txt    ${log}\n\n\n
+    append to file    ${RESULTS DIR}${/}${TEST NAME}_info.txt    ... ${TEST NAME} ...\n
+    : FOR    ${i}    IN RANGE    ${length}
+    \    ${start}    ${end}    ${time_interval}=    logcat_time_interval    ${log}    ${model_event[${i}*2]}
+    \    ...    ${model_event[${i}*2+1]}
+    \    append to file    ${RESULTS DIR}${/}${TEST NAME}_info.txt    ${model_event[${i}*2]}:${start} / ${model_event[${i}*2+1]}:${end} ... ${time_interval} \n
+    ${start}    ${end}    ${time_interval}=    logcat_time_interval    ${log}    ${model_event[0]}    ${model_event[-1]}
+    append to file    ${RESULTS DIR}${/}${TEST NAME}_info.txt    Total time: ${time_interval} \n

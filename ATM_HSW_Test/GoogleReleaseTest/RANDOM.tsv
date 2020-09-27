@@ -1,0 +1,98 @@
+*Settings*							
+Documentation	Different usecases and usecases switch within Soundtrigger APP and sound recorder						
+Suite Setup	DefaultSuiteSetup	#DefaultSuiteSetup					
+Test Setup	Default Test Setup						
+Test Teardown	Default Test Teardown						
+Resource	GoogleTestResource.tsv						
+Library	bellagio.SystemLib.Audio.playRecSD.PlayRec						
+Library	random						
+							
+*Variables*							
+@{All_Model}	START_AMBIENT	START_CHRE	START_ENTITY	START_SENSOR	START_HOTWORD		
+${stress_num}	3000						
+@{full_models}	Ambient	Chre	Hotword	Sensor	Play	Record	
+${full_model_num}	${6}						
+							
+*Test Cases*							
+Random_Test	Comment	hotword_enable	${false}				
+	Force Unload All Models						
+	${Model_Dict}=	Collections.Create Dictionary	AMBIENT	Model AmbientAudio	CHRE	Model CHRE	ENTITY
+	...	Model Entity	SENSOR	Model SensorManager	HOTWORD	Model Hotword	
+	@{Running_Models}=	Create List					
+	${No_Of_Running_Models}=	Get Length	${Running_Models}				
+	${FW_Crash_count}=	Set Variable	${0}				
+	Comment	Start_Capture_logs	${ADB_LOG_FOLDER}\\${TEST NAME}	${False}			
+	: FOR	${count}	IN RANGE	${stress_num}			
+		${Model_Operation}=	Evaluate	random.choice(${All_Model})	random		
+		${Action}	${Model}=	String.Split String	${Model_Operation}	_	
+		${No_Of_Running_Models}=	Run Keyword If	'${Action}' == 'START'	Evaluate	${No_Of_Running_Models}+${1}	ELSE
+		...	Evaluate	${No_Of_Running_Models}-${1}			
+		Append To File	${RESULTS DIR}\\Operation.txt	${Model_Operation}\n	#LHDEBUG: save it first		
+		Model_Action	${Action}	${Model}			
+		${Model_Index}=	Collections.Get Index From List	${All_Model}	${Model_Operation}		
+		Collections.Remove Values From List	${All_Model}	${Model_Operation}			
+		${Replace_Activity}=	Run Keyword If	'${Action}' == 'START'	String.Replace String	${Model_Operation}	START
+		...	STOP	ELSE	String.Replace String	${Model_Operation}	STOP
+		...	START				
+		Collections.Insert Into List	${All_Model}	${Model_Index}	${Replace_Activity}		
+		Run Keyword If	'${Action}' == 'START'	Collections.Insert Into List	${Running_Models}	${No_Of_Running_Models}	${Model}
+		...	ELSE	Collections.Remove Values From List	${Running_Models}	${Model}	
+		Verification	${No_Of_Running_Models}	${Running_Models}			
+		Log	${All_Model}				
+		Log	${count} : ${No_Of_Running_Models} ${Running_Models}	WARN			
+		Comment	Log	${Running_Models}			
+		check fw crash					
+	: FOR	${Model}	IN	@{Running_Models}			
+		model_stop	"${Model_Dict[""${Model}""]}"				
+		Comment	Stop_Capture_logs	${ADB_LOG_FOLDER}\\${TEST NAME}			
+							
+Random_Test_Reproduction	${File_content}=	Get File	E:\\Athletico_Mobile\\HSW\\HSW_1_4_6\\Operation.txt				
+	${All_Models}=	Split To Lines	${File_content}				
+	Log	${All_Models}					
+	${Model_Dict}=	Collections.Create Dictionary	AMBIENT	Model AmbientAudio	CHRE	Model CHRE	ENTITY
+	...	Model Entity	SENSOR	Model SensorManager	HOTWORD	Model Hotword	
+	@{Running_Models}=	Create List					
+	${No_Of_Running_Models}=	Get Length	${Running_Models}				
+	Start_Capture_logs	${ADB_LOG_FOLDER}\\${TEST NAME}	${False}				
+	${count}=	Set Variable	${0}				
+	: FOR	${Model_Operation}	IN	@{All_Models}			
+		${Action}	${Model}=	String.Split String	${Model_Operation}	_	
+		${No_Of_Running_Models}=	Run Keyword If	'${Action}' == 'START'	Evaluate	${No_Of_Running_Models}+${1}	ELSE
+		...	Evaluate	${No_Of_Running_Models}-${1}			
+		Model_Action	${Action}	${Model}			
+		Run Keyword If	'${Action}' == 'START'	Collections.Insert Into List	${Running_Models}	${No_Of_Running_Models}	${Model}
+		...	ELSE	Collections.Remove Values From List	${Running_Models}	${Model}	
+		Verification	${No_Of_Running_Models}	${Running_Models}			
+		Log	${No_Of_Running_Models}				
+		Log	${Running_Models}				
+		${count}=	Evaluate	${count}+${1}			
+		${fw_crashed}=	findStrInKernalLog	${fw_crash_str}			
+		run keyword if	${fw_crashed}	fail	FW crashed!!!		
+	: FOR	${Model}	IN	@{Running_Models}			
+		model_stop	"${Model_Dict[""${Model}""]}"				
+	Stop_Capture_logs	${ADB_LOG_FOLDER}\\${TEST NAME}					
+							
+Test	${model_state}=	Create Dictionary					
+	#create model state						
+	:FOR	${item}	IN	@{full_models}			
+		set to dictionary	${model_state}	${item}	${0}	#init state with 0	
+	log	${model_state}	WARN				
+	:FOR	${count}	IN RANGE	${stress_num}			
+		${sel_model_num}=	randint	${1}	${full_model_num}	#total number	
+		${sel_model_list}=	sample	${full_models}	${sel_model_num}		
+		log	${sel_model_num}: ${sel_model_list}	WARN			
+							
+*Keywords*							
+Model_Action	[Arguments]	${Action}	${Model}				
+	Start App	${SoundTriggerApp}					
+	Run Keyword If	'${Action}' == 'START'	model_start	"${Model_Dict[""${Model}""]}"	ELSE	model_stop	"${Model_Dict[""${Model}""]}"
+	sleep	1s					
+							
+Verification	[Arguments]	${No_Of_Running_Models}	${Running_Models}				
+	${No_Of_Verification}=	Evaluate	random.randint(0,${No_Of_Running_Models})	random			
+	@{Model_For_Verification}=	Evaluate	random.sample(${Running_Models},${No_Of_Verification})	random			
+	Comment	: FOR	${Model_Test}	IN	@{Model_For_Verification}		
+	Comment		Comment	Run keyword if	'${Model_Test}' == 'HOTWORD'	Test_Hotword	ELSE IF
+	...	'${Model_Test}' == 'RECORDER'	Test_SoundeRecorder	ELSE IF	'${Model_Test}' == 'AMBIENT'	Test_Ambient_Model	ELSE IF
+	...	'${Model_Test}' == 'CHRE'	Test_CHRE_Model	ELSE IF	'${Model_Test}' == ''	Test_Entity_Model	ELSE IF
+	...	'${Model_Test}' == 'SENSOR'	Test_Sensor_Model				

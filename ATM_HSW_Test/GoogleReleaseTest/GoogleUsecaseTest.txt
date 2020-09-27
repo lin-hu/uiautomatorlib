@@ -1,0 +1,512 @@
+*** Settings ***
+Documentation     Different usecases and usecases switch within Soundtrigger APP and sound recorder
+Suite Setup       DefaultSuiteSetup
+Test Setup        Default Test Setup
+Test Teardown     default_test_teardown
+Resource          GoogleTestResource.tsv
+
+*** Variables ***
+${Interation_Num}    50
+${gap_iteration}    2s
+${SoundTriggerTestApp_started}    ${False}
+
+*** Test Cases ***
+CHRE_start_stop
+    [Tags]    SANITY
+    Start App    ${SoundTriggerApp}
+    model_start    ${ModelChre}
+    sleep    1s
+    model_stop    ${ModelChre}
+    Stop App    ${SoundTriggerApp}
+
+Ambient_start_stop
+    [Tags]    SANITY
+    Start App    ${SoundTriggerApp}
+    model_start    ${ModelAmbient}
+    sleep    1s
+    model_stop    ${ModelAmbient}
+    Stop App    ${SoundTriggerApp}
+
+Sensor_start_stop
+    [Tags]    SANITY
+    Start App    ${SoundTriggerApp}
+    model_start    ${ModelSensor}
+    sleep    1s
+    model_stop    ${ModelSensor}
+    Stop App    ${SoundTriggerApp}
+
+Entity_start_stop
+    [Tags]    SANITY
+    Start App    ${SoundTriggerApp}
+    model_start    ${ModelEntity}
+    sleep    1s
+    model_stop    ${ModelEntity}
+    Stop App    ${SoundTriggerApp}
+
+CHRE_Ambient_start_stop
+    [Tags]    SANITY
+    Start App    ${SoundTriggerApp}
+    model_start    ${ModelChre}
+    sleep    1s
+    model_start    ${ModelAmbient}
+    sleep    1s
+    model_stop    ${ModelChre}
+    sleep    1s
+    model_stop    ${ModelAmbient}
+    Stop App    ${SoundTriggerApp}
+
+CHRE_Sensor_start_stop
+    [Tags]    SANITY
+    Start App    ${SoundTriggerApp}
+    model_start    ${ModelChre}
+    sleep    1s
+    model_start    ${ModelSensor}
+    sleep    1s
+    model_stop    ${ModelChre}
+    sleep    1s
+    model_stop    ${ModelSensor}
+    Stop App    ${SoundTriggerApp}
+
+CHRE_Entity_start_stop
+    [Tags]    SANITY
+    Start App    ${SoundTriggerApp}
+    model_start    ${ModelChre}
+    sleep    1s
+    model_start    ${ModelEntity}
+    sleep    1s
+    model_stop    ${ModelChre}
+    sleep    1s
+    model_stop    ${ModelEntity}
+    Stop App    ${SoundTriggerApp}
+
+Ambient_Sensor_start_stop
+    [Tags]    SANITY
+    Start App    ${SoundTriggerApp}
+    model_start    ${ModelAmbient}
+    sleep    1s
+    model_start    ${ModelSensor}
+    sleep    1s
+    model_stop    ${ModelSensor}
+    sleep    1s
+    model_stop    ${ModelAmbient}
+    Stop App    ${SoundTriggerApp}
+
+Ambient_Entity_start_stop
+    [Tags]    SANITY
+    Start App    ${SoundTriggerApp}
+    model_start    ${ModelAmbient}
+    sleep    1s
+    model_start    ${ModelEntity}
+    sleep    1s
+    model_stop    ${ModelEntity}
+    sleep    1s
+    model_stop    ${ModelAmbient}
+    Stop App    ${SoundTriggerApp}
+
+Sensor_Entity_start_stop
+    [Tags]    SANITY
+    Start App    ${SoundTriggerApp}
+    model_start    ${ModelSensor}
+    sleep    1s
+    model_start    ${ModelEntity}
+    sleep    1s
+    model_stop    ${ModelEntity}
+    sleep    1s
+    model_stop    ${ModelSensor}
+    Stop App    ${SoundTriggerApp}
+
+CHRE_Ambient_Sensor_start_stop
+    [Tags]    SANITY
+    ${sleep_sec}=    Set Variable    3
+    Start App    ${SoundTriggerApp}
+    model_start    ${ModelChre}
+    sleep    1s
+    model_start    ${ModelAmbient}
+    sleep    1s
+    model_start    ${ModelSensor}
+    sleep    1s
+    model_stop    ${ModelChre}
+    sleep    1s
+    model_stop    ${ModelAmbient}
+    sleep    1s
+    model_stop    ${ModelSensor}
+    Stop App    ${SoundTriggerApp}
+
+CHRE_Ambient_Entity_start_stop
+    [Tags]    SANITY
+    Start App    ${SoundTriggerApp}
+    model_start    ${ModelChre}
+    sleep    1s
+    model_start    ${ModelAmbient}
+    sleep    1s
+    model_start    ${ModelEntity}
+    sleep    1s
+    model_stop    ${ModelChre}
+    sleep    1s
+    model_stop    ${ModelAmbient}
+    sleep    1s
+    model_stop    ${ModelEntity}
+    Stop App    ${SoundTriggerApp}
+
+Ambient_Sensor_Entity_start_stop
+    [Tags]    SANITY
+    Start App    ${SoundTriggerApp}
+    model_start    ${ModelSensor}
+    sleep    1s
+    model_start    ${ModelAmbient}
+    sleep    1s
+    model_start    ${ModelEntity}
+    sleep    1s
+    model_stop    ${ModelSensor}
+    sleep    1s
+    model_stop    ${ModelAmbient}
+    sleep    1s
+    model_stop    ${ModelEntity}
+    Stop App    ${SoundTriggerApp}
+
+All_model_start_stop
+    [Tags]    SANITY
+    Start App    ${SoundTriggerApp}
+    model_start    ${ModelChre}
+    sleep    1s
+    model_start    ${ModelSensor}
+    sleep    1s
+    model_start    ${ModelAmbient}
+    sleep    1s
+    model_start    ${ModelEntity}
+    sleep    1s
+    model_stop    ${ModelSensor}
+    sleep    1s
+    model_stop    ${ModelAmbient}
+    sleep    1s
+    model_stop    ${ModelEntity}
+    sleep    1s
+    model_stop    ${ModelChre}
+    Stop App    ${SoundTriggerApp}
+
+chre_soundrecorder_switch
+    ${rec_local}=    set variable    ${RESULTS DIR}\\${TEST NAME}.wav
+    ${play_file}=    set variable    ${music_6s}
+    Start App    ${SoundTriggerApp}
+    model_start    ${ModelChre}
+    #start soundrecorder and pull file
+    SoundrecorderRecord    ${play_file}    ${rec_local}
+    #stop CHRE
+    Start App    ${SoundTriggerApp}
+    model_stop    ${ModelChre}
+    ${ret}    ${error_msg}=    valid_wav    ${rec_local}
+    run keyword if    ${ret} == False    fail    ${error_msg}
+
+ambient_soundrecorder_switch
+    ${rec_local}=    set variable    ${RESULTS DIR}\\${TEST NAME}.wav
+    ${play_file}=    set variable    ${music_6s}
+    Start App    ${SoundTriggerApp}
+    model_start    ${ModelAmbient}
+    #start soundrecorder and pull file
+    SoundrecorderRecord    ${play_file}    ${rec_local}
+    Start App    ${SoundTriggerApp}
+    model_stop    ${ModelAmbient}
+    ${ret}    ${error_msg}=    valid_wav    ${rec_local}
+    run keyword if    ${ret} == False    fail    ${error_msg}
+
+sensor_soundrecorder_switch
+    ${rec_local}=    set variable    ${RESULTS DIR}\\${TEST NAME}.wav
+    ${play_file}=    set variable    ${music_6s}
+    Start App    ${SoundTriggerApp}
+    model_start    ${ModelSensor}
+    #start soundrecorder and pull file
+    SoundrecorderRecord    ${play_file}    ${rec_local}
+    Start App    ${SoundTriggerApp}
+    model_stop    ${ModelSensor}
+    ${ret}    ${error_msg}=    valid_wav    ${rec_local}
+    run keyword if    ${ret} == False    fail    ${error_msg}
+
+entity_soundrecorder_switch
+    ${rec_local}=    set variable    ${RESULTS DIR}\\${TEST NAME}.wav
+    ${play_file}=    set variable    ${music_6s}
+    Start App    ${SoundTriggerApp}
+    model_start    ${ModelEntity}
+    #start soundrecorder and pull file
+    SoundrecorderRecord    ${play_file}    ${rec_local}
+    Start App    ${SoundTriggerApp}
+    model_stop    ${ModelEntity}
+    ${ret}    ${error_msg}=    valid_wav    ${rec_local}
+    run keyword if    ${ret} == False    fail    ${error_msg}
+
+soundrecorder_test
+    [Documentation]    Note: for Android soundrecorder, you need to configure it for first time use.
+    ${rec_local}=    set variable    ${RESULTS DIR}\\${TEST NAME}.wav
+    ${PlayFile}=    set variable    ${music_6s}
+    run shell    rm ${RecRemoteDir}/*.wav    #rm all the old recordings
+    StartSoundrecorder    ${SoundRecorderApp}
+    sleep    1s
+    run shell    input tap 530 530    #start recording
+    sleep    3s
+    Play Record    ${PlayFile}    ${None}    2    1    0    ${True}
+    ...    ${16000}
+    run shell    input tap 655 560    #stop recording
+    sleep    2s
+    ${rec_file}=    run shell    ls ${RecRemoteDir}/*.wav
+    ${rec_file}=    evaluate    """${rec_file}""".strip()
+    log    ${rec_file}
+    pullRemoteFile    ${rec_file}    ${rec_local}
+    StopApp    ${SoundRecorderApp}
+
+stress CHRE model start stop
+    [Documentation]    *Description*
+    ...
+    ...    This test case is to verify the issues reported by ATM-1943, ATM-1944, ATM-1945 and ATM-1946
+    # Test Model CHRE
+    Append To File    ${RESULTS_INFO_FILE}    \n\n### Test start/stop Model CHRE:\n
+    : FOR    ${count}    IN RANGE    ${Interation_Num}
+    \    Start App    ${SoundTriggerApp}
+    \    model_start    ${ModelChre}
+    \    sleep    1s
+    \    model_stop    ${ModelChre}
+    \    Stop App    ${SoundTriggerApp}
+    \    default_test_teardown
+    \    sleep    ${gap_iteration}
+
+stress Ambient model start stop
+    [Documentation]    *Description*
+    ...
+    ...    This test case is to verify the issues reported by ATM-1943, ATM-1944, ATM-1945 and ATM-1946
+    # Test Model Ambient
+    Append To File    ${RESULTS_INFO_FILE}    \n\n### Test start/stop Model Ambient:\n
+    : FOR    ${count}    IN RANGE    ${Interation_Num}
+    \    Start App    ${SoundTriggerApp}
+    \    model_start    ${ModelAmbient}
+    \    sleep    1s
+    \    model_stop    ${ModelAmbient}
+    \    Stop App    ${SoundTriggerApp}
+    \    default_test_teardown
+    \    sleep    ${gap_iteration}
+
+stress SensorManager model start stop
+    [Documentation]    *Description*
+    ...
+    ...    This test case is to verify the issues reported by ATM-1943, ATM-1944, ATM-1945 and ATM-1946
+    # Test Model Sensor
+    Append To File    ${RESULTS_INFO_FILE}    \n\n### Test start/stop Model Sensor:\n
+    : FOR    ${count}    IN RANGE    ${Interation_Num}
+    \    Start App    ${SoundTriggerApp}
+    \    model_start    ${ModelSensor}
+    \    sleep    1s
+    \    model_stop    ${ModelSensor}
+    \    Stop App    ${SoundTriggerApp}
+    \    default_test_teardown
+    \    sleep    ${gap_iteration}
+
+stress Entity model start stop
+    [Documentation]    *Description*
+    ...
+    ...    This test case is to verify the issues reported by ATM-1943, ATM-1944, ATM-1945 and ATM-1946
+    # Test Model Entity
+    Append To File    ${RESULTS_INFO_FILE}    \n\n### Test start/stop Model Entity:\n
+    : FOR    ${count}    IN RANGE    ${Interation_Num}
+    \    Start App    ${SoundTriggerApp}
+    \    model_start    ${ModelEntity}
+    \    sleep    1s
+    \    model_stop    ${ModelEntity}
+    \    Stop App    ${SoundTriggerApp}
+    \    default_test_teardown
+    \    sleep    ${gap_iteration}
+
+stress ambient and entity
+    # Test Model Ambient and Entity
+    Append To File    ${RESULTS_INFO_FILE}    \n\n### Test start/stop Model Ambient and Entity:\n
+    : FOR    ${count}    IN RANGE    ${Interation_Num}
+    \    Start App    ${SoundTriggerApp}
+    \    model_start    ${ModelAmbient}
+    \    sleep    1s
+    \    model_start    ${ModelEntity}
+    \    sleep    1s
+    \    model_stop    ${ModelAmbient}
+    \    sleep    1s
+    \    model_stop    ${ModelEntity}
+    \    Stop App    ${SoundTriggerApp}
+    \    default_test_teardown
+    \    sleep    ${gap_iteration}
+
+stress two models start stop
+    # Test Model CHRE and Ambient
+    Append To File    ${RESULTS_INFO_FILE}    \n\n### Test start/stop Model CHRE and Ambient:\n
+    : FOR    ${count}    IN RANGE    ${Interation_Num}
+    \    Start App    ${SoundTriggerApp}
+    \    model_start    ${ModelChre}
+    \    sleep    1s
+    \    model_start    ${ModelAmbient}
+    \    sleep    1s
+    \    model_stop    ${ModelChre}
+    \    sleep    1s
+    \    model_stop    ${ModelAmbient}
+    \    Stop App    ${SoundTriggerApp}
+    \    check fw crash
+    \    sleep    ${gap_iteration}
+    sleep    ${gap_iteration}
+    # Test Model CHRE and Sensor
+    Append To File    ${RESULTS_INFO_FILE}    \n\n### Test start/stop Model CHRE and Sensor:\n
+    : FOR    ${count}    IN RANGE    ${Interation_Num}
+    \    Start App    ${SoundTriggerApp}
+    \    model_start    ${ModelChre}
+    \    sleep    1s
+    \    model_start    ${ModelSensor}
+    \    sleep    1s
+    \    model_stop    ${ModelChre}
+    \    sleep    1s
+    \    model_stop    ${ModelSensor}
+    \    Stop App    ${SoundTriggerApp}
+    \    check fw crash
+    \    sleep    ${gap_iteration}
+    sleep    ${gap_iteration}
+    # Test Model CHRE and Entity
+    Append To File    ${RESULTS_INFO_FILE}    \n\n### Test start/stop Model CHRE and Entity:\n
+    : FOR    ${count}    IN RANGE    ${Interation_Num}
+    \    Start App    ${SoundTriggerApp}
+    \    model_start    ${ModelChre}
+    \    sleep    1s
+    \    model_start    ${ModelEntity}
+    \    sleep    1s
+    \    model_stop    ${ModelChre}
+    \    sleep    1s
+    \    model_stop    ${ModelEntity}
+    \    Stop App    ${SoundTriggerApp}
+    \    check fw crash
+    \    sleep    ${gap_iteration}
+    sleep    ${gap_iteration}
+    # Test Model Ambient and Sensor
+    Append To File    ${RESULTS_INFO_FILE}    \n\n### Test start/stop Model Ambient and Sensor:\n
+    : FOR    ${count}    IN RANGE    ${Interation_Num}
+    \    Start App    ${SoundTriggerApp}
+    \    model_start    ${ModelAmbient}
+    \    sleep    1s
+    \    model_start    ${ModelSensor}
+    \    sleep    1s
+    \    model_stop    ${ModelAmbient}
+    \    sleep    1s
+    \    model_stop    ${ModelSensor}
+    \    Stop App    ${SoundTriggerApp}
+    \    check fw crash
+    \    sleep    ${gap_iteration}
+    sleep    ${gap_iteration}
+    # Test Model Ambient and Entity
+    Append To File    ${RESULTS_INFO_FILE}    \n\n### Test start/stop Model Ambient and Entity:\n
+    : FOR    ${count}    IN RANGE    ${Interation_Num}
+    \    Start App    ${SoundTriggerApp}
+    \    model_start    ${ModelAmbient}
+    \    sleep    1s
+    \    model_start    ${ModelEntity}
+    \    sleep    1s
+    \    model_stop    ${ModelAmbient}
+    \    sleep    1s
+    \    model_stop    ${ModelEntity}
+    \    Stop App    ${SoundTriggerApp}
+    \    check fw crash
+    \    sleep    ${gap_iteration}
+    sleep    ${gap_iteration}
+    # Test Model Ambient and CHRE
+    Append To File    ${RESULTS_INFO_FILE}    \n\n### Test start/stop Model Ambient and CHRE:\n
+    : FOR    ${count}    IN RANGE    ${Interation_Num}
+    \    Start App    ${SoundTriggerApp}
+    \    model_start    ${ModelAmbient}
+    \    sleep    1s
+    \    model_start    ${ModelChre}
+    \    sleep    1s
+    \    model_stop    ${ModelAmbient}
+    \    sleep    1s
+    \    model_stop    ${ModelChre}
+    \    Stop App    ${SoundTriggerApp}
+    \    check fw crash
+    \    sleep    ${gap_iteration}
+    sleep    ${gap_iteration}
+    # Test Model Sensor and Entity
+    Append To File    ${RESULTS_INFO_FILE}    \n\n### Test start/stop Model Sensor and Entity :\n
+    : FOR    ${count}    IN RANGE    ${Interation_Num}
+    \    Start App    ${SoundTriggerApp}
+    \    model_start    ${ModelSensor}
+    \    sleep    1s
+    \    model_start    ${ModelEntity}
+    \    sleep    1s
+    \    model_stop    ${ModelSensor}
+    \    sleep    1s
+    \    model_stop    ${ModelEntity}
+    \    Stop App    ${SoundTriggerApp}
+    \    check fw crash
+    \    sleep    ${gap_iteration}
+    sleep    ${gap_iteration}
+    # Test Model Sensor and Ambient
+    Append To File    ${RESULTS_INFO_FILE}    \n\n### Test start/stop Model Sensor and Ambient:\n
+    : FOR    ${count}    IN RANGE    ${Interation_Num}
+    \    Start App    ${SoundTriggerApp}
+    \    model_start    ${ModelSensor}
+    \    sleep    1s
+    \    model_start    ${ModelAmbient}
+    \    sleep    1s
+    \    model_stop    ${ModelSensor}
+    \    sleep    1s
+    \    model_stop    ${ModelAmbient}
+    \    Stop App    ${SoundTriggerApp}
+    \    check fw crash
+    \    sleep    ${gap_iteration}
+    sleep    ${gap_iteration}
+    # Test Model Sensor and CHRE
+    Append To File    ${RESULTS_INFO_FILE}    \n\n### Test start/stop Model Sensor and CHRE:\n
+    : FOR    ${count}    IN RANGE    ${Interation_Num}
+    \    Start App    ${SoundTriggerApp}
+    \    model_start    ${ModelSensor}
+    \    sleep    1s
+    \    model_start    ${ModelChre}
+    \    sleep    1s
+    \    model_stop    ${ModelSensor}
+    \    sleep    1s
+    \    model_stop    ${ModelChre}
+    \    Stop App    ${SoundTriggerApp}
+    \    check fw crash
+    \    sleep    ${gap_iteration}
+    sleep    ${gap_iteration}
+    # Test Model Entity and Sensor
+    Append To File    ${RESULTS_INFO_FILE}    \n\n### Test start/stop Model Entity and Sensor:\n
+    : FOR    ${count}    IN RANGE    ${Interation_Num}
+    \    Start App    ${SoundTriggerApp}
+    \    model_start    ${ModelEntity}
+    \    sleep    1s
+    \    model_start    ${ModelSensor}
+    \    sleep    1s
+    \    model_stop    ${ModelEntity}
+    \    sleep    1s
+    \    model_stop    ${ModelSensor}
+    \    Stop App    ${SoundTriggerApp}
+    \    check fw crash
+    \    sleep    ${gap_iteration}
+    sleep    ${gap_iteration}
+    # Test Model Entity and Ambient
+    Append To File    ${RESULTS_INFO_FILE}    \n\n### Test start/stop Model Entity and Ambient:\n
+    : FOR    ${count}    IN RANGE    ${Interation_Num}
+    \    Start App    ${SoundTriggerApp}
+    \    model_start    ${ModelEntity}
+    \    sleep    1s
+    \    model_start    ${ModelAmbient}
+    \    sleep    1s
+    \    model_stop    ${ModelEntity}
+    \    sleep    1s
+    \    model_stop    ${ModelAmbient}
+    \    Stop App    ${SoundTriggerApp}
+    \    check fw crash
+    \    sleep    ${gap_iteration}
+    sleep    ${gap_iteration}
+    # Test Model Entity and CHRE
+    Append To File    ${RESULTS_INFO_FILE}    \n\n### Test start/stop Model Entity and CHRE:\n
+    : FOR    ${count}    IN RANGE    ${Interation_Num}
+    \    Start App    ${SoundTriggerApp}
+    \    model_start    ${ModelEntity}
+    \    sleep    1s
+    \    model_start    ${ModelChre}
+    \    sleep    1s
+    \    model_stop    ${ModelEntity}
+    \    sleep    1s
+    \    model_stop    ${ModelChre}
+    \    Stop App    ${SoundTriggerApp}
+    \    check fw crash
+    \    sleep    ${gap_iteration}
+
+*** Keywords ***

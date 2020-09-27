@@ -1,0 +1,46 @@
+*Settings*							
+Documentation	eS515 power measurement resources.						
+Resource	${CURDIR}/host_software_resources.tsv						
+Library	Dialogs						
+Library	bellagio.DriverManager.meters.agilentN6705b.AgilentN6705B	WITH NAME	AgilentN6705B	# AgilentN6705B DC Power Analyzer			
+							
+*Variables*							
+${AGILENT_N6705B_VISA}	USBInstrument2	# Agilent N6705B DC Power Analyzer visa address					
+							
+*Keywords*							
+Power Measurement Suite Setup	[Arguments]	${file}					
+	[Documentation]	Power Measurement Suite Setup					
+	...						
+	...	- Set VDD_IO, VDD_PLL, VDD_CORE voltages					
+	...	- Change Redhook VDD_IO voltage accordingly					
+	...	- Create output file					
+	...	- Prepare audio to play on all channels with gain adjustments					
+	# -----------------------						
+	Agilent N6705B.Connect	${AGILENT_N6705B_VISA}	${10}	USB			
+	Default Suite Setup						
+	# Create Data File						
+	Set Suite Variable	${OUT FILE}	${OUTPUT DIR}${/}${file}				
+	Create File	${OUT FILE}	CL_CoreVoltage(V), CL_CoreCurrent(mA), CL_CorePower(mW), CM_CoreVoltage(V), CM_CoreCurrent(mA), CM_CorePower(mW), \ A_CoreVoltage(V), A_CoreCurrent(mA), A_CorePower(mW), VDD_IOVoltage(V), VDD_IOCurrent(mA), VDD_IOPower(mW), Total_ChelseaPower(mW)\n	#These are headers in the CSV file			
+							
+Measure Power	[Arguments]	${time}	${use_case}	# how long it will measure | usecase name			
+	Comment	Agilent N6705B.Enable Output	1:2	On			
+	#Start Power measurement.						
+	Agilent N6705B. Start Avarage Measurment	1:2	${RESULTS DIR}/powerProfile_TC_${TEST NAME}.csv				
+	#Do power measurement for 60s						
+	sleep	${time}					
+	#Stop power measurement						
+	@{data}=	Agilent N6705B. Stop Avarage Measurment	1:2				
+	#Individual rail voltage and current data						
+	${CL_CoreVoltage}=	Evaluate	${data}[0]				
+	${CL_CoreCurrent}=	Evaluate	${data}[1]*${1000}				
+	${CL_CorePower}=	Evaluate	${data}[0]*${data}[1]*${1000}				
+	${CM_CoreVoltage}=	Evaluate	${data}[3]				
+	${CM_CoreCurrent}=	Evaluate	${data}[4]*${1000}				
+	${CM_CorePower}=	Evaluate	${data}[3]*${data}[4]*${1000}				
+	log	\n###${use_case}###\nCL: ${CL_CoreCurrent}mA \nCM: ${CM_CoreCurrent}mA	WARN				
+	#Append the results to the CSV file						
+	Append To File	${OUT FILE}	${use_case} \n				
+	Append To File	${OUT FILE}	${CL_CoreVoltage}, ${CL_CoreCurrent}, ${CL_CorePower}, ${CM_CoreVoltage}, ${CM_CoreCurrent}, ${CM_CorePower}\n				
+	sleep	2s					
+	Comment	Agilent N6705B.Enable Output	1:2	Off			
+	[Teardown]						

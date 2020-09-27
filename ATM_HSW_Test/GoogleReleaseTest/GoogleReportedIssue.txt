@@ -1,0 +1,251 @@
+*** Settings ***
+Suite Setup       DefaultSuiteSetup
+Test Setup        Default Test Setup
+Test Teardown     default_test_teardown
+Resource          GoogleTestResource.tsv
+
+*** Variables ***
+${ssp_sh}         /data/data/google_ssp_issue.sh
+${crash_str}      FW Crash
+${stress_num}     10
+
+*** Test Cases ***
+SSP_boot_issue
+    [Documentation]    Run Google SSP boot script and check if FW crash with hotword disabled
+    : FOR    ${count}    IN RANGE    ${stress_num}
+    \    rebootDevice    ${count}
+    \    run shell    dmesg -c
+    \    run shell    ${ssp_sh}
+    \    sleep    1s
+    \    ${kernel_log}=    run shell    dmesg
+    \    log    ${kernel_log}
+    \    Run Keyword And Continue On Failure    Should Not Contain    ${kernel_log}    ${crash_str}
+    \    run keyword if    """${crash_str}""" in """${kernel_log}"""    Append To File    ${RESULTS_INFO_FILE}    \nFW crashed in iteration ${count}!!!
+    \    run keyword if    """${crash_str}""" in """${kernel_log}"""    log    FW crashed!!!    WARN
+
+model_stress
+    : FOR    ${count}    IN RANGE    ${stress_num}
+    \    Start App    ${SoundTriggerApp}
+    \    model_start    ${ModelChre}
+    \    sleep    1s
+    \    model_start    ${ModelSensor}
+    \    sleep    1s
+    \    model_start    ${ModelAmbient}
+    \    sleep    1s
+    \    model_start    ${ModelEntity}
+    \    sleep    1s
+    \    model_stop    ${ModelSensor}
+    \    sleep    1s
+    \    model_stop    ${ModelAmbient}
+    \    sleep    1s
+    \    model_stop    ${ModelEntity}
+    \    sleep    1s
+    \    model_stop    ${ModelChre}
+    \    Stop App    ${SoundTriggerApp}
+
+BTP_issue
+    Force Unload All Models    # THis is to prepare the initial state
+    hotword_enable    ${true}
+    run shell    input keyevent 3
+    Start App    ${SoundTriggerApp}
+    model_start    ${ModelSensor}
+    sleep    1s
+    #hotword play
+    hotword_detect
+    run shell    input keyevent 3
+    Start App    ${SoundTriggerApp}
+    model_start    ${ModelAmbient}
+    sleep    3s
+    model_stop    ${ModelAmbient}
+    sleep    1s
+
+mem_sweep_test
+    : FOR    ${count}    IN RANGE    ${stress_num}
+    \    ${ret}=    run shell    /data/data/mem_sweep_test_tool
+    \    log    Test ${count}!    WARN
+    \    run keyword if    "fail" in """${ret}"""    log    failed!!!    WARN
+    \    run keyword if    "SUCCESS" in """${ret}"""    log    ${ret}
+
+aec_test
+    Start App    ${SoundTriggerApp}
+    text click    Play OFF    #enable aec
+    model_start    ${ModelChre}
+    sleep    1s
+    model_start    ${ModelSensor}
+    sleep    1s
+    model_start    ${ModelAmbient}
+    sleep    1s
+    model_start    ${ModelEntity}
+    sleep    1s
+    model_stop    ${ModelSensor}
+    sleep    1s
+    model_stop    ${ModelAmbient}
+    sleep    1s
+    model_stop    ${ModelEntity}
+    sleep    1s
+    model_stop    ${ModelChre}
+    text click    Play ON    #enable aec
+    Stop App    ${SoundTriggerApp}
+
+bargein_hotword_stress
+    hotword_enable    ${true}
+    : FOR    ${count}    IN RANGE    ${stress_num}
+    \    Start App    ${SoundTriggerApp}
+    \    text click    Play OFF    #enable aec
+    \    sleep    2s
+    \    hotword_detect
+    \    sleep    2s
+    \    Start App    ${SoundTriggerApp}
+    \    text click    Play ON    #disable aec
+    \    default_test_teardown
+    Stop App    ${SoundTriggerApp}
+
+bargein_hotword_stress_1
+    hotword_enable    ${true}
+    : FOR    ${count}    IN RANGE    ${stress_num}
+    \    Start App    ${SoundTriggerApp}
+    \    text click    Play OFF    #enable aec
+    \    sleep    2s
+    \    text click    Play ON    #disable aec
+    \    hotword_detect
+    \    default_test_teardown
+    Stop App    ${SoundTriggerApp}
+
+LL_hotword_test_stress
+    Comment    hotword_enable    ${true}
+    Start App    ${SoundTriggerApp}
+    : FOR    ${count}    IN RANGE    ${stress_num}
+    \    text click    Record OFF
+    \    sleep    1s
+    \    text click    Record ON
+    \    sleep    3s
+    \    default_test_teardown
+
+LL_all_model_hotword_test_stress
+    hotword_enable    ${true}
+    Start App    ${SoundTriggerApp}
+    model_start    ${ModelChre}
+    model_start    ${ModelSensor}
+    model_start    ${ModelAmbient}
+    model_start    ${ModelEntity}
+    : FOR    ${count}    IN RANGE    ${stress_num}
+    \    text click    Record OFF
+    \    sleep    1s
+    \    text click    Record ON
+    \    sleep    3s
+    \    default_test_teardown
+    Start App    ${SoundTriggerApp}
+    model_stop    ${ModelChre}
+    model_stop    ${ModelSensor}
+    model_stop    ${ModelAmbient}
+    model_stop    ${ModelEntity}
+    Stop App    ${SoundTriggerApp}
+
+chre_hw_enable_stress
+    [Documentation]    1. start CHRE
+    ...    2. keep enable/disable HotWord(dont exit Google app setup page)
+    Start App    ${SoundTriggerApp}
+    model_start    ${ModelChre}
+    sleep    2s
+    enter_setup_hotword
+    : FOR    ${count}    IN RANGE    ${stress_num}
+    \    enable_disable_hotword    ${hotword_enabled_str}
+    \    sleep    2s
+    \    enable_disable_hotword    ${hotword_disabled_str}
+    \    sleep    2s
+    \    default_test_teardown
+    goback    ${4}
+    Start App    ${SoundTriggerApp}
+    model_stop    ${ModelChre}
+
+all_model_full_hw_enable_stress
+    [Documentation]    1. start CHRE
+    ...    2. keep enable/disable HotWord(exit Google app setup as well)
+    Start App    ${SoundTriggerApp}
+    model_start    ${ModelChre}
+    model_start    ${ModelSensor}
+    model_start    ${ModelAmbient}
+    model_start    ${ModelEntity}
+    sleep    2s
+    : FOR    ${count}    IN RANGE    ${stress_num}
+    \    hotword_enable    ${true}
+    \    sleep    2s
+    \    hotword_enable    ${false}
+    \    sleep    2s
+    \    default_test_teardown
+    Start App    ${SoundTriggerApp}
+    model_stop    ${ModelChre}
+    model_stop    ${ModelSensor}
+    model_stop    ${ModelAmbient}
+    model_stop    ${ModelEntity}
+    Stop App    ${SoundTriggerApp}
+
+google_8996
+    [Documentation]    1. enable oslo
+    ...    2. enable hotword.
+    ...    3. play/stop Music.
+    hotword_enable    ${false}
+    Start App    ${SoundTriggerApp}
+    sleep    1s
+    model_start    ${ModelSensor}
+    sleep    1s
+    model_start    Hotword
+    sleep    1s
+    : FOR    ${count}    IN RANGE    ${stress_num}
+    \    text click    Play OFF    #enable aec
+    \    Comment    sleep    2s
+    \    text click    Play ON    #disable aec
+    \    check_fw_crash
+    model_stop    ${ModelSensor}
+    model_stop    Hotword
+    Stop App    ${SoundTriggerApp}
+
+google_8937
+    ${local_dir}=    set variable    C:\\workspace\\linhu\\athleticomobile\\debug\\noise\\modified
+    ${remote_dir}=    set variable    ${AUDIO_DIR_REMOTE}/modified
+    ${music_5s}=    set variable    P:${/}Share${/}Test${/}TestSignal${/}Audio_Feature_Test${/}aec_ref${/}aec_input_5s.wav
+    ${stress_num}=    set variable    100
+    ${tunnel_cmd}=    set variable    tunneling_hal_test 0 1 5 0x4020 1 0x1    #tunnel 5s mic data
+    ${tunnel_file}=    set variable    tnl_opid0-src0x4020-enc0x1_client0.pcm
+    pushLocalFile    ${local_dir}    ${AUDIO_DIR_REMOTE}
+    run shell    chmod 777 ${remote_dir}/*.*
+    test_mic_noise    mic1
+    test_mic_noise    mic2
+    test_mic_noise    mic3
+    Comment    run shell    ${remote_dir}/mic1_on.sh
+    Comment    :FOR    ${count}    IN RANGE    ${stress_num}
+    Comment    \    startPlayRecord    ${music_5s}    ${None}    2    1
+    ...    15000    ${True}    ${16000}
+    Comment    \    run shell    ${tunnel_cmd}
+    Comment    \    pullRemoteFile    ${AUDIO_DIR_REMOTE}/${tunnel_file}    ${RESULTS DIR}
+    Comment    \    ${local_wav_file}=    set variable    mic1_tunnel_${count}.wav
+    Comment    \    verify.pcm2wav    ${RESULTS DIR}/${tunnel_file}    ${RESULTS DIR}/${local_wav_file}
+    Comment    \    ${is_noise}=    check_mic_noise    ${RESULTS DIR}/${local_wav_file}
+    Comment    \    sleep    2s
+    Comment    \    run keyword if    ${is_noise} == ${True}    fail
+    Comment    run shell    ${remote_dir}/mic1_off.sh
+
+*** Keywords ***
+enter_setup_hotword
+    enter_setup_voicematch
+
+check_mic_noise
+    [Arguments]    ${wav_file}
+    ${rms}    ${pdb}=    get_wav_rms    ${wav_file}
+    ${is_noise}=    set variable if    ${pdb} > ${-56.}    ${True}    ${False}
+    [Return]    ${is_noise}
+
+test_mic_noise
+    [Arguments]    ${mic_num}
+    run shell    ${remote_dir}/${mic_num}_on.sh
+    :FOR    ${count}    IN RANGE    ${stress_num}
+    \    startPlayRecord    ${music_5s}    ${None}    2    1    15000
+    \    ...    ${True}    ${16000}
+    \    run shell    ${tunnel_cmd}
+    \    pullRemoteFile    ${AUDIO_DIR_REMOTE}/${tunnel_file}    ${RESULTS DIR}
+    \    ${local_wav_file}=    set variable    ${mic_num}_tunnel_${count}.wav
+    \    verify.pcm2wav    ${RESULTS DIR}/${tunnel_file}    ${RESULTS DIR}/${local_wav_file}
+    \    ${is_noise}=    check_mic_noise    ${RESULTS DIR}/${local_wav_file}
+    \    sleep    2s
+    \    run keyword if    ${is_noise} == ${True}    fail
+    run shell    ${remote_dir}/${mic_num}_off.sh

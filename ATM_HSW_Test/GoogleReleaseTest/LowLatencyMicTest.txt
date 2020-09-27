@@ -1,0 +1,133 @@
+*** Settings ***
+Documentation     To test low latency Mic: have to disable Hotword first!!!
+Suite Setup       low_latency_test_setup
+Test Setup        Default Test Setup
+Test Teardown     default_test_teardown
+Resource          GoogleTestResource.tsv
+
+*** Variables ***
+${remote_script_dir}    ${AUDIO_DIR_REMOTE}/evt
+${local_script_dir}    C:\\workspace\\linhu\\athleticomobile\\debug\\low_latency\\evt
+${dmic1_wav}      DMic1.wav
+${dmic1_sh}       ll_portcdc-dmic1.sh
+${dmic12_wav}     DMic12.wav
+${dmic12_sh}      ll_portCDC-D-dmic12.sh
+${dmic21_wav}     DMic21.wav
+${dmic21_sh}      ll_portCDC-D-dmic21.sh
+${dmic123_wav}    DMic123.wav
+${dmic123_sh}     ll_portCDC-D-Cdmic123.sh
+${dmic13_wav}     DMic13.wav
+${dmic13_sh}      ll_portCDC-Cdmic13.sh
+${dmic31_wav}     DMic31.wav
+${dmic31_sh}      ll_portCDC-Cdmic31.sh
+${dmic2_wav}      DMic2.wav
+${dmic2_sh}       ll_portD-dmic2.sh
+${dmic23_wav}     DMic23.wav
+${dmic23_sh}      ll_portD-C-dmic23.sh
+${dmic32_wav}     DMic32.wav
+${dmic32_sh}      ll_portD-C-dmic32.sh
+${dmic3_wav}      DMic3.wav
+${dmic3_sh}       ll_portC-dmic3.sh
+${music_30s}      ${music_local}\\music_stereo_30sec48k.wav
+
+*** Test Cases ***
+DMIC1_test
+    startPlayRecord    ${music_30s}    ${None}    2    1    15000    ${True}
+    ...    ${16000}
+    ${response}=    Run Shell    ls -al ${remote_script_dir}/${dmic1_sh}
+    Log    ${response}
+    ${ret}=    run shell    ${remote_script_dir}/${dmic1_sh}
+    #TODO: check script return
+    pullRemoteFile    ${AUDIO_DIR_REMOTE}/${dmic1_wav}    ${RESULTS DIR}\\${dmic1_wav}
+    ${ret}    ${error_msg}=    valid_wav    ${RESULTS DIR}\\${dmic1_wav}
+    run keyword if    ${ret} == False    fail    ${error_msg}
+    sleep    2s
+
+DMIC2_test
+    startPlayRecord    ${music_30s}    ${None}    2    1    15000    ${True}
+    ...    ${16000}
+    ${ret}=    run shell    ${remote_script_dir}/${dmic2_sh}
+    pullRemoteFile    ${AUDIO_DIR_REMOTE}/${dmic2_wav}    ${RESULTS DIR}\\${dmic2_wav}
+    ${ret}    ${error_msg}=    valid_wav    ${RESULTS DIR}\\${dmic2_wav}
+    run keyword if    ${ret} == False    fail    ${error_msg}
+    sleep    2s
+
+DMIC3_test
+    startPlayRecord    ${music_30s}    ${None}    2    1    15000    ${True}
+    ...    ${16000}
+    ${ret}=    run shell    ${remote_script_dir}/${dmic3_sh}
+    pullRemoteFile    ${AUDIO_DIR_REMOTE}/${dmic3_wav}    ${RESULTS DIR}\\${dmic3_wav}
+    ${ret}    ${error_msg}=    valid_wav    ${RESULTS DIR}\\${dmic3_wav}
+    run keyword if    ${ret} == False    fail    ${error_msg}
+    sleep    2s
+
+DMIC12_test
+    startPlayRecord    ${music_30s}    ${None}    2    1    15000    ${True}
+    ...    ${16000}
+    ${ret}=    run shell    ${remote_script_dir}/${dmic12_sh}
+    pullRemoteFile    ${AUDIO_DIR_REMOTE}/${dmic12_wav}    ${RESULTS DIR}\\${dmic12_wav}
+    ${ret}    ${error_msg}=    valid_wav    ${RESULTS DIR}\\${dmic12_wav}
+    run keyword if    ${ret} == False    fail    ${error_msg}
+    sleep    2s
+
+DMIC21_test
+    LL_passthrough_test    ${dmic21_sh}    ${dmic21_wav}
+
+DMIC13_test
+    startPlayRecord    ${music_30s}    ${None}    2    1    15000    ${True}
+    ...    ${16000}
+    ${ret}=    run shell    ${remote_script_dir}/${dmic13_sh}
+    pullRemoteFile    ${AUDIO_DIR_REMOTE}/${dmic13_wav}    ${RESULTS DIR}\\${dmic13_wav}
+    ${ret}    ${error_msg}=    valid_wav    ${RESULTS DIR}\\${dmic13_wav}
+    run keyword if    ${ret} == False    fail    ${error_msg}
+    sleep    2s
+
+DMIC31_test
+    LL_passthrough_test    ${dmic31_sh}    ${dmic31_wav}
+
+DMIC23_test
+    startPlayRecord    ${music_30s}    ${None}    2    1    15000    ${True}
+    ...    ${16000}
+    ${ret}=    run shell    ${remote_script_dir}/${dmic23_sh}
+    pullRemoteFile    ${AUDIO_DIR_REMOTE}/${dmic23_wav}    ${RESULTS DIR}\\${dmic23_wav}
+    ${ret}    ${error_msg}=    valid_wav    ${RESULTS DIR}\\${dmic23_wav}
+    run keyword if    ${ret} == False    fail    ${error_msg}
+    sleep    2s
+
+DMIC32_test
+    LL_passthrough_test    ${dmic32_sh}    ${dmic32_wav}
+
+DMIC123_test
+    [Tags]    NO_RUN
+    startPlayRecord    ${music_30s}    ${None}    2    1    15000    ${True}
+    ...    ${16000}
+    ${ret}=    run shell    ${remote_script_dir}/${dmic123_sh}
+    pullRemoteFile    ${AUDIO_DIR_REMOTE}/${dmic123_wav}    ${RESULTS DIR}\\${dmic123_wav}
+    ${ret}    ${error_msg}=    valid_wav    ${RESULTS DIR}\\${dmic123_wav}
+    run keyword if    ${ret} == False    fail    ${error_msg}
+    sleep    2s
+
+*** Keywords ***
+low_latency_test_setup
+    [Documentation]    push test script to DUT and disable hotword
+    DefaultSuiteSetup
+    Comment    hostApi.Set Root
+    Comment    Send Adb Command    wait-for-device
+    Comment    hostApi.Remount
+    Comment    sleep    3s
+    Directory Should Not Be Empty    ${local_script_dir}
+    pushLocalFile    ${local_script_dir}    ${AUDIO_DIR_REMOTE}
+    run shell    chmod 777 ${remote_script_dir}/*.*
+    run shell    rm ${AUDIO_DIR_REMOTE}/*.wav    #remove all the wave file
+    hotword_enable    ${false}    #disable hotword
+    Force Unload All Models
+
+LL_passthrough_test
+    [Arguments]    ${script}    ${wav_file}
+    startPlayRecord    ${music_30s}    ${None}    2    1    15000    ${True}
+    ...    ${16000}
+    ${ret}=    run shell    ${remote_script_dir}/${script}
+    pullRemoteFile    ${AUDIO_DIR_REMOTE}/${wav_file}    ${RESULTS DIR}\\${wav_file}
+    ${ret}    ${error_msg}=    valid_wav    ${RESULTS DIR}\\${wav_file}
+    run keyword if    ${ret} == False    fail    ${error_msg}
+    sleep    2s
